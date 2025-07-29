@@ -1,4 +1,13 @@
+
+import sys
 from pathlib import Path
+import os
+
+# Añadir la carpeta raíz del proyecto al sys.path si no está presente
+ROOT_DIR = Path(__file__).resolve().parent.parent
+root_str = str(ROOT_DIR)
+if root_str not in sys.path:
+    sys.path.append(root_str)
 
 # Directorio raíz del proyecto
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -8,6 +17,9 @@ DATA_DIR = ROOT_DIR / 'data'
 RAW_DIR = DATA_DIR / 'raw'
 INTERIM_DIR = DATA_DIR / 'interim'
 PROCESSED_DIR = DATA_DIR / 'processed'
+
+# Directorios de modelos
+MODELS_DIR = ROOT_DIR / 'models'
 
 # Archivos raw
 RAW_BQ_PARQUET = RAW_DIR / 'raw_data_bq_forecasting_20250630.parquet'
