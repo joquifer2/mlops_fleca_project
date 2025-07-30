@@ -258,3 +258,106 @@ def homogenization(df):
     df = df[df['familia'].isin(familias_relevantes)]
     return df
 
+## ---------------
+# Transformación a series temporales semanales  
+## ----------------- 
+
+def transformar_a_series_temporales(
+    df_raw,
+    fecha_inicio='2023-01-02',
+    fecha_fin='2025-06-29',
+    familia='BOLLERIA',
+    output_path=None,
+    min_dias_semana=7  # Nuevo parámetro, por defecto 7
+):
+    from src.data_utils import impute_missing_dates, impute_null_values, homogenization # type: ignore
+    import pandas as pd
+
+    """
+    Limpia, homogeneiza y agrega los datos diarios a series semanales completas para la familia indicada.
+
+    Parámetros:
+    - df_raw: DataFrame con datos crudos
+    - fecha_inicio: Fecha de inicio (str o datetime)
+    - fecha_fin: Fecha fin (str o datetime)
+    - familia: Familia de productos a filtrar (str)
+    - output_path: Path opcional para guardar el resultado (str o Path)
+    - min_dias_semana: Mínimo de días para considerar una semana (int, por defecto 7)
+
+    Retorna:
+    - DataFrame con series temporales semanales
+    """
+    df = df_raw.copy()
+    df['fecha'] = pd.to_datetime(df['fecha'])
+    # Filtrar rango de fechas
+    df = df[(df['fecha'] >= fecha_inicio) & (df['fecha'] <= fecha_fin)]
+    # Homogeneizar familia si es necesario (ejemplo: 'BEBIDA' a 'BEBIDAS')
+    if 'familia' in df.columns:
+        df.loc[df['familia'] == 'BEBIDA', 'familia'] = 'BEBIDAS'
+    # Imputar valores nulos básicos
+    for col in ['base_imponible', 'total']:
+        if col in df.columns:
+            df[col] = df[col].fillna(0)
+    # Asegurar columnas exógenas
+    if 'is_summer_peak' not in df.columns:
+        df['is_summer_peak'] = 0
+    if 'is_easter' not in df.columns:
+        df['is_easter'] = 0
+    # Calcular semana ISO
+    iso = df['fecha'].dt.isocalendar()
+    df['year_iso'] = iso['year']
+    df['week_iso'] = iso['week']
+    
+    # Contar días únicos por semana/familia
+    conteo_dias = df.groupby(['year_iso','week_iso','familia'])['fecha'].nunique().reset_index(name='dias_semana')
+    # Agregación semanal
+    df_semanal = (
+        df.groupby(['year_iso','week_iso','familia'], as_index=False)
+          .agg({
+             'base_imponible': 'sum',
+             'is_summer_peak': 'max',
+             'is_easter':      'max'
+          })
+        .merge(conteo_dias, on=['year_iso','week_iso','familia'])
+    )
+    # Filtrar solo semanas con el mínimo de días
+    df_semanal = df_semanal[df_semanal['dias_semana'] >= min_dias_semana]
+    # Filtrar familia
+    df_familia_semanal = df_semanal.query(f"familia=='{familia}'").copy()
+    df_familia_semanal.rename(columns={'year_iso':'year','week_iso':'week'}, inplace=True)
+    df_familia_semanal = df_familia_semanal.sort_values(['year','week']).reset_index(drop=True)
+
+    # Guardar el resultado si se proporciona un path de salida
+    if output_path:
+        df_familia_semanal.to_parquet(str(output_path), index=False)
+        print(f"Series temporales guardadas en: {output_path}")
+    
+    return df_familia_semanal
+
+def guardar_time_series_interim(df, familia, interim_dir='data/interim'):
+    """
+    Guarda el DataFrame de series temporales en la carpeta interim con nombre:
+    time_series_{familia}_weekly_{timestamp}.parquet
+    """
+    import os
+    import datetime
+    os.makedirs(interim_dir, exist_ok=True)
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f"time_series_{familia}_weekly_{timestamp}.parquet"
+    filepath = os.path.join(interim_dir, filename)
+    df.to_parquet(filepath, index=False)
+    print(f"Archivo guardado en: {filepath}")
+    return filepath
+
+# Ejemplo de uso tras la transformación:
+# df_familia_semanal = transformar_a_series_temporales(df_raw)
+# guardar_time_series_interim(df_familia_semanal, familia='BOLLERIA')
+
+
+# ...existing code...
+
+
+
+
+
+
