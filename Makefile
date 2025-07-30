@@ -1,4 +1,4 @@
-.PHONY: clean data lint requirements sync_data_to_s3 sync_data_from_s3
+.PHONY: clean data lint requirements sync_data_to_s3 sync_data_from_s3 poetry_install poetry_update
 
 #################################################################################
 # GLOBALS                                                                       #
@@ -20,7 +20,15 @@ endif
 # COMMANDS                                                                      #
 #################################################################################
 
-## Install Python Dependencies
+## Install Python Dependencies with Poetry
+poetry_install:
+	poetry install
+
+## Update Poetry dependencies
+poetry_update:
+	poetry update
+
+## Install Python Dependencies with pip
 requirements: test_environment
 	$(PYTHON_INTERPRETER) -m pip install -U pip setuptools wheel
 	$(PYTHON_INTERPRETER) -m pip install -r requirements.txt
@@ -80,6 +88,17 @@ test_environment:
 # PROJECT RULES                                                                 #
 #################################################################################
 
+## Run Jupyter Notebook with Poetry
+jupyter:
+	poetry run jupyter notebook
+
+## Run JupyterLab with Poetry
+jupyterlab:
+	poetry run jupyter lab
+
+## Export requirements from Poetry to requirements.txt
+export_requirements:
+	poetry export -f requirements.txt --output requirements.txt --without-hashes
 
 
 #################################################################################

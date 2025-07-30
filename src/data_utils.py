@@ -1,5 +1,3 @@
-
-
 # --- Imports ---
 import pandas as pd
 from pathlib import Path
@@ -63,14 +61,27 @@ def descargar_datos_bigquery():
 # ----------------------
 
 def cargar_datos_raw(parquet_file):
+    """
+    Carga datos desde un archivo parquet y maneja la conversión de tipos dbdate.
+    
+    Parámetros:
+    - parquet_file: Ruta al archivo parquet
+    
+    Retorna:
+    - DataFrame con los datos cargados
+    """
     print(f"Cargando datos desde: {parquet_file}")
+    # Usar PyArrow para leer el archivo
     table = pq.read_table(parquet_file)
+    # Identificar columnas de tipo dbdate
     schema = table.schema
     dbdate_cols = [field.name for field in schema if str(field.type) == 'dbdate']
+    # Convertir columnas dbdate a string
     for col in dbdate_cols:
         table = table.set_column(table.schema.get_field_index(col), col, table.column(col).cast('string'))
-    df = table.to_pandas(ignore_metadata=True)
-    return df
+    # Convertir a pandas DataFrame
+    df_result = table.to_pandas(ignore_metadata=True)
+    return df_result
 
 #-----------------------
 # Validar datos 
@@ -268,11 +279,9 @@ def transformar_a_series_temporales(
     fecha_fin='2025-06-29',
     familia='BOLLERIA',
     output_path=None,
-    min_dias_semana=7  # Nuevo parámetro, por defecto 7
+    min_dias_semana=7,  # Nuevo parámetro, por defecto 7
+    guardar_interim=False  # Nuevo parámetro para guardar en interim
 ):
-    from src.data_utils import impute_missing_dates, impute_null_values, homogenization # type: ignore
-    import pandas as pd
-
     """
     Limpia, homogeneiza y agrega los datos diarios a series semanales completas para la familia indicada.
 
@@ -283,6 +292,7 @@ def transformar_a_series_temporales(
     - familia: Familia de productos a filtrar (str)
     - output_path: Path opcional para guardar el resultado (str o Path)
     - min_dias_semana: Mínimo de días para considerar una semana (int, por defecto 7)
+    - guardar_interim: Si True, guarda el resultado en la carpeta interim (bool)
 
     Retorna:
     - DataFrame con series temporales semanales
@@ -300,9 +310,34 @@ def transformar_a_series_temporales(
             df[col] = df[col].fillna(0)
     # Asegurar columnas exógenas
     if 'is_summer_peak' not in df.columns:
-        df['is_summer_peak'] = 0
+        df['is_summer_peak'] = df['fecha'].dt.month.isin([7, 8]).astype(int)
+    
+    # Definir los rangos de Semana Santa por año (según el calendario)
     if 'is_easter' not in df.columns:
+        easter_ranges = {
+            2023: pd.date_range('2023-04-03', '2023-04-09'),  # Semana Santa 2023
+            2024: pd.date_range('2024-03-25', '2024-03-31'),  # Semana Santa 2024
+            2025: pd.date_range('2025-04-14', '2025-04-20'),  # Semana Santa 2025
+        }
+        
+        # Crear la columna is_easter con 0 por defecto
         df['is_easter'] = 0
+        
+        # Marcar las fechas de Semana Santa
+        for year, dates in easter_ranges.items():
+            df.loc[df['fecha'].dt.date.isin(dates.date), 'is_easter'] = 1
+            
+    # Calcular explícitamente las semanas de Semana Santa
+    easter_weeks = []
+    for year, dates in {
+            2023: pd.date_range('2023-04-03', '2023-04-09'),  # Semana Santa 2023
+            2024: pd.date_range('2024-03-25', '2024-03-31'),  # Semana Santa 2024
+            2025: pd.date_range('2025-04-14', '2025-04-20'),  # Semana Santa 2025
+        }.items():
+        for date in dates:
+            easter_weeks.append((date.isocalendar().year, date.isocalendar().week))
+    # Eliminar duplicados
+    easter_weeks = list(set(easter_weeks))
     # Calcular semana ISO
     iso = df['fecha'].dt.isocalendar()
     df['year_iso'] = iso['year']
@@ -316,14 +351,22 @@ def transformar_a_series_temporales(
           .agg({
              'base_imponible': 'sum',
              'is_summer_peak': 'max',
-             'is_easter':      'max'
+             'is_easter':      'max'  # Usamos max para conservar 1 si cualquier día de la semana es Semana Santa
           })
         .merge(conteo_dias, on=['year_iso','week_iso','familia'])
     )
     # Filtrar solo semanas con el mínimo de días
     df_semanal = df_semanal[df_semanal['dias_semana'] >= min_dias_semana]
+    
     # Filtrar familia
     df_familia_semanal = df_semanal.query(f"familia=='{familia}'").copy()
+    
+    # Asegurar que las semanas de Semana Santa estén marcadas correctamente
+    for year_iso, week_iso in easter_weeks:
+        mask = (df_familia_semanal['year_iso'] == year_iso) & (df_familia_semanal['week_iso'] == week_iso)
+        if len(df_familia_semanal[mask]) > 0:
+            df_familia_semanal.loc[mask, 'is_easter'] = 1
+    
     df_familia_semanal.rename(columns={'year_iso':'year','week_iso':'week'}, inplace=True)
     df_familia_semanal = df_familia_semanal.sort_values(['year','week']).reset_index(drop=True)
 
@@ -331,6 +374,10 @@ def transformar_a_series_temporales(
     if output_path:
         df_familia_semanal.to_parquet(str(output_path), index=False)
         print(f"Series temporales guardadas en: {output_path}")
+    
+    # Guardar en interim si se solicita
+    if guardar_interim:
+        guardar_time_series_interim(df_familia_semanal, familia)
     
     return df_familia_semanal
 
@@ -349,15 +396,105 @@ def guardar_time_series_interim(df, familia, interim_dir='data/interim'):
     print(f"Archivo guardado en: {filepath}")
     return filepath
 
-# Ejemplo de uso tras la transformación:
-# df_familia_semanal = transformar_a_series_temporales(df_raw)
-# guardar_time_series_interim(df_familia_semanal, familia='BOLLERIA')
+# ------------------------------
+# Generación de lags y target
+# ------------------------------
 
+def generar_lags(df, lags_list, columna='base_imponible'):
+    """
+    Genera variables de lag a partir de una serie temporal.
+    
+    Parámetros:
+    - df: DataFrame con datos de serie temporal
+    - lags_list: Lista de periodos de lag a generar
+    - columna: Columna para la que se generan los lags
+    
+    Retorna:
+    - DataFrame con columnas de lag añadidas
+    """
+    df_lags = df.copy()
+    
+    # Ordenar por año y semana para asegurar secuencia temporal correcta
+    if 'year' in df_lags.columns and 'week' in df_lags.columns:
+        df_lags = df_lags.sort_values(['year', 'week'])
+    
+    # Generar lags
+    for lag in lags_list:
+        df_lags[f'{columna}_lag{lag}'] = df_lags[columna].shift(lag)
+    
+    return df_lags
 
-# ...existing code...
+def generar_target(df, columna='base_imponible', periodos_adelante=1):
+    """
+    Genera variable target para forecasting.
+    
+    Parámetros:
+    - df: DataFrame con datos de serie temporal
+    - columna: Columna que se usará como target
+    - periodos_adelante: Número de periodos a predecir (por defecto 1)
+    
+    Retorna:
+    - DataFrame con columna target añadida
+    """
+    df_target = df.copy()
+    
+    # Ordenar por año y semana para asegurar secuencia temporal correcta
+    if 'year' in df_target.columns and 'week' in df_target.columns:
+        df_target = df_target.sort_values(['year', 'week'])
+    
+    # Generar target
+    target_name = f'{columna}_next{periodos_adelante}'
+    df_target[target_name] = df_target[columna].shift(-periodos_adelante)
+    
+    return df_target, target_name
 
-
-
-
-
-
+def transformar_features_target(
+    df, 
+    lags_list=[1, 2, 3, 4], 
+    columna_target='base_imponible',
+    cols_exogenas=None,
+    periodos_adelante=1,
+    eliminar_nulos=True
+):
+    """
+    Prepara features (lags) y target para modelado de forecasting.
+    
+    Parámetros:
+    - df: DataFrame con serie temporal
+    - lags_list: Lista de lags a generar
+    - columna_target: Columna que se usará como target
+    - cols_exogenas: Lista de columnas exógenas a incluir en features
+    - periodos_adelante: Número de periodos a predecir
+    - eliminar_nulos: Si True, elimina filas con valores nulos
+    
+    Retorna:
+    - X: DataFrame con features
+    - y: Series con target
+    - df_completo: DataFrame con features y target
+    """
+    if cols_exogenas is None:
+        cols_exogenas = []
+    
+    # Generar lags
+    df_features = generar_lags(df, lags_list, columna_target)
+    
+    # Generar target
+    df_completo, target_name = generar_target(
+        df_features, 
+        columna_target, 
+        periodos_adelante
+    )
+    
+    # Preparar features y target
+    cols_lags = [f'{columna_target}_lag{lag}' for lag in lags_list]
+    X = df_completo[cols_lags + cols_exogenas]
+    y = df_completo[target_name]
+    
+    # Eliminar filas con valores nulos si se solicita
+    if eliminar_nulos:
+        mask_completos = ~(X.isnull().any(axis=1) | y.isnull())
+        X = X[mask_completos]
+        y = y[mask_completos]
+        df_completo = df_completo[mask_completos]
+    
+    return X, y, df_completo
