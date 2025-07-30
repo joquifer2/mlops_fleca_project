@@ -381,17 +381,34 @@ def transformar_a_series_temporales(
     
     return df_familia_semanal
 
-def guardar_time_series_interim(df, familia, interim_dir='data/interim'):
+def guardar_time_series_interim(df, familia, interim_dir=None):
     """
     Guarda el DataFrame de series temporales en la carpeta interim con nombre:
     time_series_{familia}_weekly_{timestamp}.parquet
+    
+    Utiliza una ruta absoluta a la carpeta data/interim del proyecto.
     """
     import os
     import datetime
+    from pathlib import Path
+    
+    # Obtener la ruta absoluta a la carpeta data/interim del proyecto
+    if interim_dir is None:
+        # Intentar encontrar la carpeta data/interim relativa al módulo
+        try:
+            # Primero intentamos usar la ruta relativa al archivo actual
+            module_path = Path(__file__).resolve().parent  # src/
+            project_root = module_path.parent  # raíz del proyecto
+            interim_dir = project_root / 'data' / 'interim'
+        except:
+            print("AVISO: No se pudo determinar la ruta del proyecto, usando 'data/interim'")
+            interim_dir = 'data/interim'
+    
     os.makedirs(interim_dir, exist_ok=True)
-    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"time_series_{familia}_weekly_{timestamp}.parquet"
-    filepath = os.path.join(interim_dir, filename)
+    # Usar solo la fecha (YYYYMMDD) sin horas, minutos ni segundos
+    date_only = datetime.datetime.now().strftime('%Y%m%d')
+    filename = f"time_series_{familia}_weekly_{date_only}.parquet"
+    filepath = os.path.join(str(interim_dir), filename)
     df.to_parquet(filepath, index=False)
     print(f"Archivo guardado en: {filepath}")
     return filepath
@@ -498,3 +515,63 @@ def transformar_features_target(
         df_completo = df_completo[mask_completos]
     
     return X, y, df_completo
+
+def guardar_datos_procesados(X, y, df_completo, familia='BOLLERIA', processed_dir=None):
+    """
+    Guarda los datasets finales listos para modelado (X, y, df_completo) en la carpeta processed.
+    
+    Parámetros:
+    - X: DataFrame con las features
+    - y: Series con el target
+    - df_completo: DataFrame completo con features y target
+    - familia: Nombre de la familia de productos
+    - processed_dir: Directorio donde guardar los archivos. Si es None, usa la ruta del proyecto
+    
+    Retorna:
+    - Diccionario con las rutas donde se guardaron los archivos
+    """
+    import os
+    import datetime
+    from pathlib import Path
+    
+    # Obtener la ruta absoluta a la carpeta data/processed del proyecto
+    if processed_dir is None:
+        try:
+            # Primero intentamos usar la ruta relativa al archivo actual
+            module_path = Path(__file__).resolve().parent  # src/
+            project_root = module_path.parent  # raíz del proyecto
+            processed_dir = project_root / 'data' / 'processed'
+        except:
+            print("AVISO: No se pudo determinar la ruta del proyecto, usando 'data/processed'")
+            processed_dir = 'data/processed'
+    
+    os.makedirs(processed_dir, exist_ok=True)
+    date_only = datetime.datetime.now().strftime('%Y%m%d')
+    
+    # Guardar los tres datasets
+    files = {}
+    
+    # Guardar X (features)
+    x_filename = f"ts_X_{familia.lower()}_{date_only}.parquet"
+    x_filepath = os.path.join(str(processed_dir), x_filename)
+    X.to_parquet(x_filepath, index=False)
+    files['X'] = x_filepath
+    
+    # Guardar y (target)
+    y_filename = f"ts_y_{familia.lower()}_{date_only}.parquet"
+    y_filepath = os.path.join(str(processed_dir), y_filename)
+    y.to_frame().to_parquet(y_filepath, index=False)
+    files['y'] = y_filepath
+    
+    # Guardar df_completo (dataset completo)
+    df_filename = f"ts_df_{familia.lower()}_{date_only}.parquet"
+    df_filepath = os.path.join(str(processed_dir), df_filename)
+    df_completo.to_parquet(df_filepath, index=False)
+    files['df_completo'] = df_filepath
+    
+    print(f"Datos procesados guardados en la carpeta: {processed_dir}")
+    print(f"- Features (X): {x_filename}")
+    print(f"- Target (y): {y_filename}")
+    print(f"- Dataset completo: {df_filename}")
+    
+    return files
