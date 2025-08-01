@@ -1,22 +1,22 @@
+
+import pandas as pd
 from datetime import datetime
 from typing import Tuple
-import pandas as pd
+
 
 def train_test_split(
-        df: pd.DataFrame, 
+        df: pd.DataFrame,
         split_date,
         target: str = 'base_imponible',
-        date_column: str = 'week'  # Assuming 'week' is the date column
-        ) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
+    ) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
 
     """
-    Divide un dataframe de series en train y test según fecha de corte.
+    Divide un DataFrame de series temporales en train y test según fecha de corte usando 'week_start'.
 
-    Parameters:
-    - df: pd.DataFrame - DataFrame completo, debe incluir las columnas semana, lags, is_summer_pick, is_easter y el target.
-    - split_date: int - Número de semana (ej: 202413) para dividir el DataFrame.
+    Parámetros:
+    - df: pd.DataFrame - DataFrame completo, debe incluir la columna 'week_start' y el target.
+    - split_date: str o datetime - Fecha de corte (primer lunes de la semana de split, formato 'YYYY-MM-DD' o datetime).
     - target: str - Nombre de la columna objetivo (target) en el DataFrame.
-    - date_column: str - Nombre de la columna de fecha en el DataFrame.
 
     Returns:
     - X_train: pd.DataFrame - Features de entrenamiento.
@@ -25,12 +25,11 @@ def train_test_split(
     - y_test: pd.Series - Target de prueba.
     """
 
-    # Convertir split_date al mismo tipo que la columna date_column para asegurar una comparación correcta
-    split_date = df[date_column].dtype.type(split_date)
     
-    # División temporal (asegurando compatibilidad de tipos)
-    train_data = df[df[date_column] <= split_date]
-    test_data = df[df[date_column] > split_date]
+    # Conversión robusta de split_date a datetime
+    split_date = pd.to_datetime(split_date)
+    train_data = df[df['week_start'] <= split_date].reset_index(drop=True)
+    test_data = df[df['week_start'] > split_date].reset_index(drop=True)
 
     # Separar características (X) y objetivo (y)
     X_train = train_data.drop(columns=[target])

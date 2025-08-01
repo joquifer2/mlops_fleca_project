@@ -524,6 +524,11 @@ def transformar_features_target(
     extra_cols = []
     if 'week_start' in df_completo.columns:
         extra_cols.append('week_start')
+
+    # Eliminar columnas que no se usarán nunca como features
+    drop_cols = ['familia', 'year', 'week', 'dias_semana']
+    df_completo = df_completo.drop(columns=[col for col in drop_cols if col in df_completo.columns])
+
     X = df_completo[cols_lags + cols_exogenas + extra_cols]
     y = df_completo[target_name]
 
