@@ -86,7 +86,10 @@ def cargar_datos_raw(parquet_file):
 #-----------------------
 # Validar datos 
 # -----------------------
-def validar_fechas_completas(df, fecha_col='fecha', fecha_inicio='2023-01-01', fecha_fin='2025-06-30'):
+def validar_fechas_completas(
+        df, fecha_col='fecha', 
+        fecha_inicio='2023-01-01', 
+        fecha_fin='2025-06-30'):
     """
     Valida que todas las fechas diarias entre fecha_inicio y fecha_fin estén presentes en el DataFrame.
     Imprime un resumen y devuelve la lista de fechas faltantes.
@@ -368,7 +371,16 @@ def transformar_a_series_temporales(
             df_familia_semanal.loc[mask, 'is_easter'] = 1
     
     df_familia_semanal.rename(columns={'year_iso':'year','week_iso':'week'}, inplace=True)
-    df_familia_semanal = df_familia_semanal.sort_values(['year','week']).reset_index(drop=True)
+
+    # Añadir columna week_start: primer lunes de cada semana ISO
+    # Esto permite un identificador temporal único y ordenable
+    df_familia_semanal['week_start'] = pd.to_datetime(
+        df_familia_semanal['year'].astype(str) + '-W' + df_familia_semanal['week'].astype(str) + '-1',
+        format='%G-W%V-%u'
+    )
+
+    # Ordenar por week_start para mantener la lógica temporal inequívoca
+    df_familia_semanal = df_familia_semanal.sort_values('week_start').reset_index(drop=True)
 
     # Guardar el resultado si se proporciona un path de salida
     if output_path:
@@ -431,8 +443,10 @@ def generar_lags(df, lags_list, columna='base_imponible'):
     """
     df_lags = df.copy()
     
-    # Ordenar por año y semana para asegurar secuencia temporal correcta
-    if 'year' in df_lags.columns and 'week' in df_lags.columns:
+    # Ordenar por week_start si existe, si no por año y semana
+    if 'week_start' in df_lags.columns:
+        df_lags = df_lags.sort_values('week_start')
+    elif 'year' in df_lags.columns and 'week' in df_lags.columns:
         df_lags = df_lags.sort_values(['year', 'week'])
     
     # Generar lags
@@ -455,8 +469,10 @@ def generar_target(df, columna='base_imponible', periodos_adelante=1):
     """
     df_target = df.copy()
     
-    # Ordenar por año y semana para asegurar secuencia temporal correcta
-    if 'year' in df_target.columns and 'week' in df_target.columns:
+    # Ordenar por week_start si existe, si no por año y semana
+    if 'week_start' in df_target.columns:
+        df_target = df_target.sort_values('week_start')
+    elif 'year' in df_target.columns and 'week' in df_target.columns:
         df_target = df_target.sort_values(['year', 'week'])
     
     # Generar target
@@ -504,16 +520,20 @@ def transformar_features_target(
     
     # Preparar features y target
     cols_lags = [f'{columna_target}_lag{lag}' for lag in lags_list]
-    X = df_completo[cols_lags + cols_exogenas]
+    # Si existe week_start, mantenerla en X y df_completo para splits posteriores
+    extra_cols = []
+    if 'week_start' in df_completo.columns:
+        extra_cols.append('week_start')
+    X = df_completo[cols_lags + cols_exogenas + extra_cols]
     y = df_completo[target_name]
-    
+
     # Eliminar filas con valores nulos si se solicita
     if eliminar_nulos:
         mask_completos = ~(X.isnull().any(axis=1) | y.isnull())
         X = X[mask_completos]
         y = y[mask_completos]
         df_completo = df_completo[mask_completos]
-    
+
     return X, y, df_completo
 
 def guardar_datos_procesados(X, y, df_completo, familia='BOLLERIA', processed_dir=None):
