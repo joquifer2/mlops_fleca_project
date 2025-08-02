@@ -40,3 +40,12 @@ NOTEBOOKS_DIR = ROOT_DIR / 'notebooks'
 REPORTS_DIR = ROOT_DIR / 'reports'
 
 # Puedes añadir aquí más rutas según se necesiten
+
+if not Path(MODELS_DIR).exists():
+    os.makedirs(MODELS_DIR)
+if not Path(PROCESSED_DIR).exists():
+    os.makedirs(PROCESSED_DIR)
+if not Path(INTERIM_DIR).exists():
+    os.makedirs(INTERIM_DIR)
+if not Path(RAW_DIR).exists():
+    os.makedirs(RAW_DIR)
