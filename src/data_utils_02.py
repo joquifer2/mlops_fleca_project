@@ -256,3 +256,22 @@ def guardar_datos_procesados(X, y, df_completo, familia='BOLLERIA', processed_di
     print(f"- Target (y): {y_filename}")
     print(f"- Dataset completo: {df_filename}")
     return files
+
+
+# --- Subida a BigQuery ---
+def subir_df_a_bigquery(df_completo, dataset_table="fleca-del-port.features", project_id=None, if_exists="replace"):
+    """
+    Sube el DataFrame completo procesado a una tabla de BigQuery.
+    - dataset_table: str, nombre completo de la tabla (por ejemplo, 'fleca-del-port.features')
+    - project_id: str, ID del proyecto de GCP (opcional si está configurado por entorno)
+    - if_exists: 'replace' (sobrescribe) o 'append' (añade filas)
+    """
+    from google.cloud import bigquery
+    import pandas as pd
+    print(f"Subiendo DataFrame a BigQuery: {dataset_table} ...")
+    client = bigquery.Client(project=project_id) if project_id else bigquery.Client()
+    job_config = bigquery.LoadJobConfig(write_disposition="WRITE_TRUNCATE" if if_exists=="replace" else "WRITE_APPEND")
+    job = client.load_table_from_dataframe(df_completo, dataset_table, job_config=job_config)
+    job.result()  # Espera a que termine
+    print(f"Subida completada a {dataset_table} ({df_completo.shape[0]} filas, {df_completo.shape[1]} columnas)")
+    return True

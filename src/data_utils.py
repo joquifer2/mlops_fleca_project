@@ -5,6 +5,22 @@ import pyarrow.parquet as pq
 import numpy as np
 from google.cloud import bigquery
 
+# --- Cliente BigQuery centralizado ---
+def get_bigquery_client(cred_path=None, project="fleca-del-port"):
+    """
+    Inicializa y retorna un cliente de BigQuery usando la ruta de credenciales especificada.
+    Si no se pasa cred_path, busca en la ruta por defecto del proyecto.
+    """
+    import os
+    if cred_path is None:
+        # Busca desde la raíz del proyecto
+        cred_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "credentials", "fleca-del-port-978701b834a4.json"))
+    if os.path.exists(cred_path):
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
+    else:
+        raise FileNotFoundError(f"No se encontró el archivo de credenciales en {cred_path}")
+    return bigquery.Client(project=project)
+
 # --- Variables globales y paths ---
 FAMILIA = 'BOLLERIA'  # Cambia aquí la familia que desees procesar
 
@@ -600,3 +616,40 @@ def guardar_datos_procesados(X, y, df_completo, familia='BOLLERIA', processed_di
     print(f"- Dataset completo: {df_filename}")
     
     return files
+
+
+# --- Subida a BigQuery ---
+def subir_df_a_bigquery(X=None, y=None, df_completo=None, dataset_base="features", familia="BOLLERIA", project_id=None, if_exists="replace"):
+    """
+    Sube los DataFrames procesados (X, y, df_completo) a BigQuery como tablas separadas.
+    - dataset_base: str, nombre del dataset de BigQuery (por ejemplo, 'features')
+    - familia: str, nombre de la familia para sufijo de tabla
+    - project_id: str, ID del proyecto de GCP (opcional si está configurado por entorno)
+    - if_exists: 'replace' (sobrescribe) o 'append' (añade filas)
+    """
+    from google.cloud import bigquery
+    import pandas as pd
+    # Asegura que y es DataFrame si es Series
+    if y is not None and isinstance(y, pd.Series):
+        y = y.to_frame()
+    import datetime
+    date_only = datetime.datetime.now().strftime('%Y%m%d')
+    tablas = {
+        f"ts_X_{familia.lower()}_{date_only}": X,
+        f"ts_y_{familia.lower()}_{date_only}": y,
+        f"ts_df_{familia.lower()}_{date_only}": df_completo
+    }
+    client = bigquery.Client(project=project_id) if project_id else bigquery.Client()
+    job_config = bigquery.LoadJobConfig(write_disposition="WRITE_TRUNCATE" if if_exists=="replace" else "WRITE_APPEND")
+    resultados = {}
+    for nombre, df in tablas.items():
+        if df is not None:
+            table_name = f"{dataset_base}.{nombre}"
+            print(f"Subiendo DataFrame a BigQuery: {table_name} ...")
+            job = client.load_table_from_dataframe(df, table_name, job_config=job_config)
+            job.result()  # Espera a que termine
+            print(f"Subida completada a {table_name} ({df.shape[0]} filas, {df.shape[1]} columnas)")
+            resultados[nombre] = True
+        else:
+            resultados[nombre] = False
+    return resultados
