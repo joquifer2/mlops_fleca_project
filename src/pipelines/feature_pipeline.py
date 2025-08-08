@@ -2,7 +2,6 @@
 
 """
 Feature pipeline para ingestión y guardado local de features procesados.
-Siempre guarda los datos procesados usando el archivo más reciente generado.
 """
 
 import os
@@ -17,7 +16,6 @@ def run_feature_pipeline():
 	- Transforma a series temporales
 	- Genera features y target
 	- Guarda los datos procesados localmente
-	- El archivo generado será el más reciente y se usará automáticamente en el pipeline de entrenamiento
 	"""
 	# 1. Cargar datos raw
 	df_raw = load_raw_data(
