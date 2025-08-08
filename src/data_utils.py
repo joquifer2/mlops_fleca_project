@@ -128,8 +128,8 @@ def validar_fechas_completas(
 
 def load_raw_data(
     parquet_path=None,
-    fecha_inicio='2023-01-01',
-    fecha_fin='2025-06-30',
+    fecha_inicio=None,
+    fecha_fin=None,
     descargar_bq=False
 ):
     """
@@ -140,22 +140,34 @@ def load_raw_data(
     raw_bq_parquet, _ = get_paths()
     if parquet_path is None:
         parquet_path = raw_bq_parquet
+
     # 1. Descargar datos desde BigQuery y guardar parquet si se indica
     if descargar_bq:
         descargar_datos_bigquery()
+
     # 2. Cargar datos raw desde parquet
     df_raw = cargar_datos_raw(parquet_path)
-    # 3. Validar continuidad temporal de fechas
+
+    # 3. Filtrar por fechas solo si se especifican
     df_raw['fecha'] = pd.to_datetime(df_raw['fecha'])
-    df_raw = df_raw[(df_raw['fecha'] >= fecha_inicio) & (df_raw['fecha'] <= fecha_fin)]
-    validar_fechas_completas(df_raw, fecha_col='fecha', fecha_inicio=fecha_inicio, fecha_fin=fecha_fin)
+    if fecha_inicio is not None:
+        df_raw = df_raw[df_raw['fecha'] >= fecha_inicio]
+    if fecha_fin is not None:
+        df_raw = df_raw[df_raw['fecha'] <= fecha_fin]
+
+    # Validar continuidad solo si ambos están definidos
+    if fecha_inicio is not None and fecha_fin is not None:
+        validar_fechas_completas(df_raw, fecha_col='fecha', fecha_inicio=fecha_inicio, fecha_fin=fecha_fin)
+
     # 4. Homogeneizar familia
     if 'familia' in df_raw.columns:
         df_raw.loc[df_raw['familia'] == 'BEBIDA', 'familia'] = 'BEBIDAS'
+
     # 5. Imputar nulos básicos
     for col in ['base_imponible', 'total']:
         if col in df_raw.columns:
             df_raw[col] = df_raw[col].fillna(0)
+            
     # 6. Variables exógenas mínimas
     if 'is_summer_peak' not in df_raw.columns:
         df_raw['is_summer_peak'] = df_raw['fecha'].dt.month.isin([7,8]).astype(int)
