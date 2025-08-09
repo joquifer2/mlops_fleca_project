@@ -141,8 +141,11 @@ def load_raw_data(
     if parquet_path is None:
         parquet_path = raw_bq_parquet
 
-    # 1. Descargar datos desde BigQuery y guardar parquet si se indica
-    if descargar_bq:
+
+    # 1. Descargar datos desde BigQuery si se indica o si el archivo no existe
+    parquet_path_obj = Path(parquet_path)
+    if descargar_bq or not parquet_path_obj.exists():
+        print(f"Descargando datos desde BigQuery porque descargar_bq={descargar_bq} o no existe el archivo {parquet_path}")
         descargar_datos_bigquery()
 
     # 2. Cargar datos raw desde parquet
