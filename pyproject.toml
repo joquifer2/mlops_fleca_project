@@ -26,6 +26,7 @@ catboost = "^1.2.8"
 optuna = "^4.4.0"
 hopsworks = "^4.3.1"
 python-dotenv = "^1.1.1"
+confluent-kafka = "^2.11.0"
 
 [tool.poetry.group.dev.dependencies]
 # Herramientas de desarrollo

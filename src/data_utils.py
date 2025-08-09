@@ -346,6 +346,15 @@ def transformar_a_series_temporales(
     if 'is_summer_peak' not in df.columns:
         df['is_summer_peak'] = df['fecha'].dt.month.isin([7, 8]).astype(int)
     
+        # Asegura que las columnas 'year' y 'week' sean Int64 (nullable) si existen
+        for col in ["year", "week"]:
+            if col in df.columns:
+                # Si la columna es unsigned, primero convertir a float para evitar errores, luego a Int64
+                if pd.api.types.is_unsigned_integer_dtype(df[col]):
+                    df[col] = df[col].astype(float).astype('Int64')
+                else:
+                    df[col] = df[col].astype('Int64')
+    
     # Definir los rangos de Semana Santa por año (según el calendario)
     if 'is_easter' not in df.columns:
         easter_ranges = {
