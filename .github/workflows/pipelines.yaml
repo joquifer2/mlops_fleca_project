@@ -14,6 +14,12 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+      - name: Crear archivo de credenciales de GCP
+        run: |
+          mkdir -p credentials
+          echo "$GCP_CREDENTIALS" > credentials/fleca-del-port-978701b834a4.json
+        env:
+          GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
