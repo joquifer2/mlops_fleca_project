@@ -9,7 +9,7 @@ from src.data_utils import load_raw_data, transformar_a_series_temporales, trans
 from src.paths import ROOT_DIR
 
 
-def run_feature_pipeline():
+def run_feature_pipeline(fecha_inicio="2023-01-02", fecha_fin="2025-06-30", descargar_bq=True):
 	"""
 	Ejecuta el pipeline de ingestión de features:
 	- Carga datos raw
@@ -19,9 +19,9 @@ def run_feature_pipeline():
 	"""
 	# 1. Cargar datos raw
 	df_raw = load_raw_data(
-		fecha_inicio="2023-01-02",
-		fecha_fin="2025-06-30",
-		descargar_bq=True
+		fecha_inicio=fecha_inicio,
+		fecha_fin=fecha_fin,
+		descargar_bq=descargar_bq
 	)
 	# 2. Transformar a series temporales
 	df_ts = transformar_a_series_temporales(df_raw)
