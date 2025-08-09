@@ -70,3 +70,5 @@ jobs:
         with:
           name: training-pipeline-logs
           path: training_pipeline.log
+
+# Forzar recarga de workflow - commit mínimo
