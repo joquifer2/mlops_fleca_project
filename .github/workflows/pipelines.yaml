@@ -22,34 +22,6 @@ jobs:
           GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
       - name: Exportar GOOGLE_APPLICATION_CREDENTIALS
         run: echo "GOOGLE_APPLICATION_CREDENTIALS=$GITHUB_WORKSPACE/credentials/fleca-del-port-978701b834a4.json" >> $GITHUB_ENV
-      - name: Debug credenciales GCP
-        run: |
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS"
-          ls -l credentials
-          head -20 credentials/fleca-del-port-978701b834a4.json
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-      - name: Install Poetry
-        run: |
-          pip install poetry
-      - name: Install dependencies with Poetry
-        run: |
-          poetry install
-  setup:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-      - name: Crear archivo de credenciales de GCP
-        run: |
-          mkdir -p credentials
-          echo "$GCP_CREDENTIALS" > credentials/fleca-del-port-978701b834a4.json
-        env:
-          GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
-      - name: Exportar GOOGLE_APPLICATION_CREDENTIALS
-        run: echo "GOOGLE_APPLICATION_CREDENTIALS=$GITHUB_WORKSPACE/credentials/fleca-del-port-978701b834a4.json" >> $GITHUB_ENV
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
