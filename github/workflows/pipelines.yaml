@@ -1,0 +1,72 @@
+name: Fleca-MLops-Pipelines
+
+on: 
+  schedule: #cada semana
+    - cron: '0 7 * * 1'  # Cada lunes a las 07:00 (UTC)
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install Poetry
+        run: |
+          pip install poetry
+      - name: Install dependencies with Poetry
+        run: |
+          poetry install
+  features:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install Poetry
+        run: |
+          pip install poetry
+      - name: Install dependencies with Poetry
+        run: |
+          poetry install
+      - name: Ejecutar feature_pipeline.py y guardar logs
+        run: |
+          poetry run python src/pipelines/feature_pipeline.py | tee feature_pipeline.log
+      - name: Subir logs como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: feature-pipeline-logs
+          path: feature_pipeline.log
+  training:
+    runs-on: ubuntu-latest
+    needs: features
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install Poetry
+        run: |
+          pip install poetry
+      - name: Install dependencies with Poetry
+        run: |
+          poetry install
+      - name: Ejecutar training_pipeline.py y guardar logs
+        run: |
+          poetry run python src/pipelines/training_pipeline.py | tee training_pipeline.log
+      - name: Subir logs como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: training-pipeline-logs
+          path: training_pipeline.log
+
