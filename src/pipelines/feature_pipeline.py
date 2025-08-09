@@ -21,7 +21,7 @@ def run_feature_pipeline():
 	df_raw = load_raw_data(
 		fecha_inicio="2023-01-02",
 		fecha_fin="2025-06-30",
-		descargar_bq=False
+		descargar_bq=True
 	)
 	# 2. Transformar a series temporales
 	df_ts = transformar_a_series_temporales(df_raw)
