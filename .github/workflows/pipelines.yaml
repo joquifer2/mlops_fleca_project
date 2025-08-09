@@ -20,6 +20,8 @@ jobs:
           echo "$GCP_CREDENTIALS" > credentials/fleca-del-port-978701b834a4.json
         env:
           GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+      - name: Exportar GOOGLE_APPLICATION_CREDENTIALS
+        run: echo "GOOGLE_APPLICATION_CREDENTIALS=$GITHUB_WORKSPACE/credentials/fleca-del-port-978701b834a4.json" >> $GITHUB_ENV
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
