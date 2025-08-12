@@ -23,7 +23,7 @@ MODELS_DIR = ROOT_DIR / 'models'
 
 
 # Otros paths útiles
-MODELS_DIR = ROOT_DIR / 'models'
+
 NOTEBOOKS_DIR = ROOT_DIR / 'notebooks'
 REPORTS_DIR = ROOT_DIR / 'reports'
 
@@ -37,3 +37,6 @@ if not Path(INTERIM_DIR).exists():
     os.makedirs(INTERIM_DIR)
 if not Path(RAW_DIR).exists():
     os.makedirs(RAW_DIR)
+
+# Ruta centralizada para el archivo parquet de datos raw descargados de BigQuery
+RAW_BQ_PARQUET = RAW_DIR / "raw_data_bq_forecasting.parquet"
