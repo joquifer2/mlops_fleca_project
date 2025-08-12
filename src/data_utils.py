@@ -28,49 +28,122 @@ FAMILIA = 'BOLLERIA'  # Cambia aquí la familia que desees procesar
 # --- Función para importación robusta de paths centralizados ---
 def get_paths():
     """
-    Devuelve los paths centralizados RAW_BQ_PARQUET y VALIDATED_RANGE_SEMANAL_FAMILIA de forma robusta.
+    Devuelve todos los paths centralizados definidos en src.paths como un diccionario.
+    Lanza un error si no puede importar el módulo.
     """
+    import sys
+    from pathlib import Path
     try:
-        from src.paths import RAW_BQ_PARQUET, VALIDATED_RANGE_SEMANAL_FAMILIA
-        return RAW_BQ_PARQUET, VALIDATED_RANGE_SEMANAL_FAMILIA
+        from src import paths as _paths
     except ImportError:
-        import sys
         sys.path.append(str(Path(__file__).resolve().parent))
         try:
-            from src.paths import RAW_BQ_PARQUET, VALIDATED_RANGE_SEMANAL_FAMILIA
-            return RAW_BQ_PARQUET, VALIDATED_RANGE_SEMANAL_FAMILIA
-        except ImportError:
-            print("AVISO: Usando rutas alternativas para paths centralizados")
-            data_dir = Path(__file__).resolve().parent.parent / 'data'
-            RAW_BQ_PARQUET = data_dir / 'raw' / 'raw_data_bq_forecasting_20250630.parquet'
-            VALIDATED_RANGE_SEMANAL_FAMILIA = data_dir / 'interim' / 'validated_range_semanal_familia_20250630.parquet'
-            return RAW_BQ_PARQUET, VALIDATED_RANGE_SEMANAL_FAMILIA
+            from src import paths as _paths
+        except ImportError as e:
+            raise ImportError("No se pudo importar src.paths. Revisa que el archivo y los nombres de variables existen y están actualizados.") from e
 
-# Obtener los paths al inicio para uso global (mantiene compatibilidad)
-RAW_BQ_PARQUET, VALIDATED_RANGE_SEMANAL_FAMILIA = get_paths()
+    # Recoger todos los atributos en mayúsculas definidos en paths.py
+    path_dict = {k: getattr(_paths, k) for k in dir(_paths) if k.isupper()}
+    return path_dict
 
-# --- Descargar datos desde BigQuery ---
-def descargar_datos_bigquery():
+# Ejemplo de uso: obtener los paths como diccionario
+PATHS = get_paths()
+RAW_BQ_PARQUET = PATHS.get('RAW_BQ_PARQUET', None)
+VALIDATED_RANGE_SEMANAL_FAMILIA = PATHS.get('VALIDATED_RANGE_SEMANAL_FAMILIA', None)
+RAW_DIR = PATHS.get('RAW_DIR', None)
+INTERIM_DIR = PATHS.get('INTERIM_DIR', None)
+PROCESSED_DIR = PATHS.get('PROCESSED_DIR', None)
+
+# --- Descargar datos desde BigQuery (todo el histórico) ---
+def descargar_datos_bigquery_histórico():
+    from datetime import datetime
     """
-    Descarga los datos desde BigQuery y guarda el DataFrame como archivo parquet en el path centralizado.
+    Descarga los datos desde dos tablas de BigQuery, concatena los resultados y guarda el DataFrame como archivo parquet en data/raw con la fecha actual en el nombre.
     """
     print("Iniciando conexión con BigQuery...")
     client = bigquery.Client()
     print("Conexión establecida.")
-    print("Ejecutando consulta SQL...")
-    query = """
+
+    # 1. Descargar todos los datos de la tabla varios.raw_data_bq_forecasting_20250630
+    print("Descargando datos de fleca-del-port.varios.raw_data_bq_forecasting_20250630 ...")
+    query1 = """
     SELECT *
     FROM `fleca-del-port.varios.raw_data_bq_forecasting_20250630`
-    WHERE fecha < '2025-07-01'
     """
-    df = client.query(query).to_dataframe()
-    print(f"Consulta finalizada. Filas descargadas: {len(df)}")
-    output_path = RAW_BQ_PARQUET
+    df1 = client.query(query1).to_dataframe()
+    print(f"Filas descargadas de la primera tabla: {len(df1)}")
+
+    # 2. Descargar solo los campos seleccionados de la tabla t_facturas_dia_extendida_2023
+    print("Descargando datos de fleca-del-port.fleca_ventas_dia.t_facturas_dia_extendida_2023 ...")
+    query2 = """
+    SELECT 
+        fecha,
+        n_factura,
+        zona_de_venta,
+        producto,
+        familia,
+        cantidad,
+        base_imponible,
+        tipo_IVA,
+        total
+    FROM `fleca-del-port.fleca_ventas_dia.t_facturas_dia_extendida_2023`
+    WHERE fecha >= '2025-08-04' AND fecha <= '2025-06-30'
+    """
+    df2 = client.query(query2).to_dataframe()
+    print(f"Filas descargadas de la segunda tabla: {len(df2)}")
+
+    # 3. Concatenar ambos DataFrames (unión vertical)
+    df = pd.concat([df1, df2], ignore_index=True, sort=False)
+    print(f"Total de filas tras concatenar: {len(df)}")
+
+    # 4. Guardar el DataFrame combinado en parquet con fecha en el nombre
+    fecha_actual = datetime.now().strftime("%Y%m%d")
+    output_path = RAW_DIR / f"raw_data_bq_forecasting_{fecha_actual}.parquet"
+    output_path.parent.mkdir(parents=True, exist_ok=True)  # Asegura que la carpeta existe
     print(f"Guardando archivo en {output_path} ...")
     df.to_parquet(str(output_path), index=False)
     print("Archivo guardado correctamente.")
     return df
 
+
+def descargar_datos_bigquery():
+    from datetime import datetime
+    print("Iniciando conexión con BigQuery...")
+    client = bigquery.Client()
+    print("Conexión establecida.")
+
+    # Solo descargar la segunda tabla
+    print("Descargando datos de fleca-del-port.fleca_ventas_dia.t_facturas_dia_extendida_2023 ...")
+    query = """
+    SELECT 
+        fecha,
+        n_factura,
+        zona_de_venta,
+        producto,
+        familia,
+        cantidad,
+        base_imponible,
+        tipo_IVA,
+        total
+    FROM `fleca-del-port.fleca_ventas_dia.t_facturas_dia_extendida_2023`
+    WHERE fecha >= '2025-08-04' 
+    """
+    df = client.query(query).to_dataframe()
+    print(f"Filas descargadas de la segunda tabla: {len(df)}")
+
+    # Guardar el DataFrame en la carpeta RAW con fecha en el nombre
+    from pathlib import Path
+    fecha_actual = datetime.now().strftime("%Y%m%d")
+    # Determinar la ruta absoluta a la carpeta data/raw
+    module_path = Path(__file__).resolve().parent  # src/
+    project_root = module_path.parent  # raíz del proyecto
+    raw_dir = project_root / 'data' / 'raw'
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    output_path = raw_dir / f"raw_data_bq_forecasting_{fecha_actual}.parquet"
+    print(f"Guardando archivo en {output_path} ...")
+    df.to_parquet(str(output_path), index=False)
+    print("Archivo guardado correctamente.")
+    return df
 
 # ----------------------
 # Cargar datos raw
@@ -104,13 +177,19 @@ def cargar_datos_raw(parquet_file):
 # -----------------------
 def validar_fechas_completas(
         df, fecha_col='fecha', 
-        fecha_inicio='2023-01-01', 
-        fecha_fin='2025-06-30'):
+        fecha_inicio=None, 
+        fecha_fin=None):
     """
     Valida que todas las fechas diarias entre fecha_inicio y fecha_fin estén presentes en el DataFrame.
+    Si no se pasan fechas, usa el rango real de la columna fecha.
     Imprime un resumen y devuelve la lista de fechas faltantes.
     """
-    
+    # Asegurar tipo datetime
+    fechas = pd.to_datetime(df[fecha_col])
+    if fecha_inicio is None:
+        fecha_inicio = fechas.min()
+    if fecha_fin is None:
+        fecha_fin = fechas.max()
     fechas_completas = pd.date_range(start=fecha_inicio, end=fecha_fin, freq='D')
     fechas_presentes = pd.to_datetime(df[fecha_col].unique())
     missing_dates = np.setdiff1d(fechas_completas, fechas_presentes)
@@ -136,20 +215,39 @@ def load_raw_data(
     Descarga, carga y valida los datos raw antes de la agregación semanal.
     Devuelve el DataFrame limpio y listo para agregación.
     """
+
     # Importación robusta de paths centralizados
     raw_bq_parquet, _ = get_paths()
     if parquet_path is None:
-        parquet_path = raw_bq_parquet
+        # Buscar el archivo parquet más reciente en la carpeta RAW
+        from pathlib import Path
+        import re
+        raw_dir = Path(raw_bq_parquet).parent
+        parquet_files = list(raw_dir.glob('raw_data_bq_forecasting_*.parquet'))
+        if parquet_files:
+            # Ordenar por fecha en el nombre del archivo (YYYYMMDD)
+            def extract_date(f):
+                m = re.search(r'(\d{8})', f.name)
+                return m.group(1) if m else ''
+            parquet_files = sorted(parquet_files, key=lambda f: extract_date(f), reverse=True)
+            parquet_path = parquet_files[0]
+            print(f"Usando parquet más reciente: {parquet_path}")
+        else:
+            parquet_path = raw_bq_parquet
 
     # 1. Descargar datos desde BigQuery y guardar parquet si se indica
     if descargar_bq:
         descargar_datos_bigquery()
 
+
     # 2. Cargar datos raw desde parquet
     df_raw = cargar_datos_raw(parquet_path)
 
+    # Asegurar que la columna 'fecha' es datetime antes de cualquier filtrado
+    if 'fecha' in df_raw.columns:
+        df_raw['fecha'] = pd.to_datetime(df_raw['fecha'])
+
     # 3. Filtrar por fechas solo si se especifican
-    df_raw['fecha'] = pd.to_datetime(df_raw['fecha'])
     if fecha_inicio is not None:
         df_raw = df_raw[df_raw['fecha'] >= fecha_inicio]
     if fecha_fin is not None:
@@ -306,9 +404,9 @@ def homogenization(df):
 
 def transformar_a_series_temporales(
     df_raw,
-    fecha_inicio='2023-01-02',
-    fecha_fin='2025-06-29',
-    familia='BOLLERIA',
+    fecha_inicio=None,
+    fecha_fin=None,
+    familia=None,
     output_path=None,
     min_dias_semana=7,  # Nuevo parámetro, por defecto 7
     guardar_interim=False  # Nuevo parámetro para guardar en interim
@@ -330,8 +428,25 @@ def transformar_a_series_temporales(
     """
     df = df_raw.copy()
     df['fecha'] = pd.to_datetime(df['fecha'])
+
+    # Si no se pasan fechas, usar el rango del DataFrame
+    if fecha_inicio is None:
+        fecha_inicio = df['fecha'].min()
+    if fecha_fin is None:
+        fecha_fin = df['fecha'].max()
+
     # Filtrar rango de fechas
     df = df[(df['fecha'] >= fecha_inicio) & (df['fecha'] <= fecha_fin)]
+
+    # Si no se pasa familia, usar la primera familia encontrada (o todas si no se filtra)
+    if familia is None and 'familia' in df.columns:
+        familias_unicas = df['familia'].unique()
+        if len(familias_unicas) == 1:
+            familia = familias_unicas[0]
+        else:
+            print(f"AVISO: No se especificó familia, usando la primera encontrada: {familias_unicas[0]}")
+            familia = familias_unicas[0]
+
     # Homogeneizar familia si es necesario (ejemplo: 'BEBIDA' a 'BEBIDAS')
     if 'familia' in df.columns:
         df.loc[df['familia'] == 'BEBIDA', 'familia'] = 'BEBIDAS'
@@ -389,8 +504,11 @@ def transformar_a_series_temporales(
     # Filtrar solo semanas con el mínimo de días
     df_semanal = df_semanal[df_semanal['dias_semana'] >= min_dias_semana]
     
-    # Filtrar familia
-    df_familia_semanal = df_semanal.query(f"familia=='{familia}'").copy()
+    # Filtrar familia solo si se especifica
+    if familia is not None:
+        df_familia_semanal = df_semanal.query(f"familia=='{familia}'").copy()
+    else:
+        df_familia_semanal = df_semanal.copy()
     
     # Asegurar que las semanas de Semana Santa estén marcadas correctamente
     for year_iso, week_iso in easter_weeks:

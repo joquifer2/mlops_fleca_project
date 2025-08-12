@@ -21,21 +21,10 @@ PROCESSED_DIR = DATA_DIR / 'processed'
 # Directorios de modelos
 MODELS_DIR = ROOT_DIR / 'models'
 
-# Archivos raw
-RAW_BQ_PARQUET = RAW_DIR / 'raw_data_bq_forecasting_20250630.parquet'
 
-
-# Archivos interim
-VALIDATED_RANGE_FECHA_FAMILIA = INTERIM_DIR / 'validated_range_fecha_familia_20250630.parquet'
-VALIDATED_RANGE_SEMANAL_FAMILIA = INTERIM_DIR / 'validated_range_semanal_familia_20250630.parquet'
-VALIDATED_RANGE_MONTHLY_FAMILIA = INTERIM_DIR / 'validated_range_monthly_familia_20250630.parquet'
-
-# Archivos processed
-TS_DF_BOLLERIA_SEMANAL = PROCESSED_DIR / 'ts_df_bolleria_semanal.parquet'
-TS_DF_BOLLERIA_BASELINE = PROCESSED_DIR / 'ts_df_bolleria_baseline.parquet'
 
 # Otros paths útiles
-MODELS_DIR = ROOT_DIR / 'models'
+
 NOTEBOOKS_DIR = ROOT_DIR / 'notebooks'
 REPORTS_DIR = ROOT_DIR / 'reports'
 
@@ -49,3 +38,6 @@ if not Path(INTERIM_DIR).exists():
     os.makedirs(INTERIM_DIR)
 if not Path(RAW_DIR).exists():
     os.makedirs(RAW_DIR)
+
+# Ruta centralizada para el archivo parquet de datos raw descargados de BigQuery
+RAW_BQ_PARQUET = RAW_DIR / "raw_data_bq_forecasting.parquet"
