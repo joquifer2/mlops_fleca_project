@@ -248,7 +248,8 @@ def load_raw_data(
     """
 
     # Importación robusta de paths centralizados
-    raw_bq_parquet, _ = get_paths()
+    PATHS = get_paths()
+    raw_bq_parquet = PATHS.get('RAW_BQ_PARQUET', None)
     if parquet_path is None:
         # Buscar el archivo parquet más reciente en la carpeta RAW
         from pathlib import Path
