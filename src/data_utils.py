@@ -1,11 +1,15 @@
 
+
 # --- Imports ---
-import pandas as pd
+import os
 from pathlib import Path
-import pyarrow.parquet as pq
+import pandas as pd
 import numpy as np
+import pyarrow.parquet as pq
 from google.cloud import bigquery
 from datetime import datetime, timedelta
+
+from src.paths import RAW_DIR, INTERIM_DIR
 
 # --- Utilidad para obtener el último domingo ---
 def get_last_sunday():
@@ -247,25 +251,13 @@ def load_raw_data(
     Devuelve el DataFrame limpio y listo para agregación.
     """
 
-    # Importación robusta de paths centralizados
+    # Obtener los paths centralizados
     PATHS = get_paths()
     raw_bq_parquet = PATHS.get('RAW_BQ_PARQUET', None)
+
+    # Si no se especifica parquet_path, usar el path por defecto
     if parquet_path is None:
-        # Buscar el archivo parquet más reciente en la carpeta RAW
-        from pathlib import Path
-        import re
-        raw_dir = Path(raw_bq_parquet).parent
-        parquet_files = list(raw_dir.glob('raw_data_bq_forecasting_*.parquet'))
-        if parquet_files:
-            # Ordenar por fecha en el nombre del archivo (YYYYMMDD)
-            def extract_date(f):
-                m = re.search(r'(\d{8})', f.name)
-                return m.group(1) if m else ''
-            parquet_files = sorted(parquet_files, key=lambda f: extract_date(f), reverse=True)
-            parquet_path = parquet_files[0]
-            print(f"Usando parquet más reciente: {parquet_path}")
-        else:
-            parquet_path = raw_bq_parquet
+        parquet_path = raw_bq_parquet
 
     # Si no se pasa fecha_fin, usar el último domingo completo
     if fecha_fin is None:
@@ -437,6 +429,66 @@ def homogenization(df):
     df = df[df['familia'].isin(familias_relevantes)]
     return df
 
+# --- Lógica de Semana Santa ---
+def get_easter_ranges():
+    """
+    Devuelve un diccionario con los rangos de fechas de Semana Santa por año.
+    """
+    return {
+        2023: pd.date_range('2023-04-03', '2023-04-09'),
+        2024: pd.date_range('2024-03-25', '2024-03-31'),
+        2025: pd.date_range('2025-04-14', '2025-04-20'),
+    }
+
+def mark_easter(df):
+    """
+    Añade la columna is_easter al DataFrame y marca las fechas de Semana Santa.
+    """
+    easter_ranges = get_easter_ranges()
+    df = df.copy()
+    df['is_easter'] = 0
+    for year, dates in easter_ranges.items():
+        df.loc[df['fecha'].dt.date.isin(dates.date), 'is_easter'] = 1
+    return df
+
+def get_easter_weeks():
+    """
+    Devuelve una lista de tuplas (year, week) correspondientes a las semanas de Semana Santa.
+    """
+    easter_weeks = []
+    for year, dates in get_easter_ranges().items():
+        for date in dates:
+            easter_weeks.append((date.isocalendar().year, date.isocalendar().week))
+    return list(set(easter_weeks))
+
+# --- Agregación semanal ---
+def aggregate_weekly(df, min_dias_semana=7):
+    """
+    Realiza la agregación semanal sobre el DataFrame, filtrando semanas incompletas.
+    """
+    iso = df['fecha'].dt.isocalendar()
+    df['year_iso'] = iso['year']
+    df['week_iso'] = iso['week']
+    conteo_dias = df.groupby(['year_iso','week_iso','familia'])['fecha'].nunique().reset_index(name='dias_semana')
+    df_semanal = (
+        df.groupby(['year_iso','week_iso','familia'], as_index=False)
+          .agg({
+             'base_imponible': 'sum',
+             'is_summer_peak': 'max',
+             'is_easter':      'max'
+          })
+        .merge(conteo_dias, on=['year_iso','week_iso','familia'])
+    )
+    df_semanal = df_semanal[df_semanal['dias_semana'] >= min_dias_semana]
+    df_semanal.rename(columns={'year_iso':'year','week_iso':'week'}, inplace=True)
+    # Añadir columna week_start: primer lunes de cada semana ISO
+    df_semanal['week_start'] = pd.to_datetime(
+        df_semanal['year'].astype(str) + '-W' + df_semanal['week'].astype(str) + '-1',
+        format='%G-W%V-%u'
+    )
+    df_semanal = df_semanal.sort_values('week_start').reset_index(drop=True)
+    return df_semanal
+
 ## ---------------
 # Transformación a series temporales semanales  
 ## ----------------- 
@@ -447,8 +499,8 @@ def transformar_a_series_temporales(
     fecha_fin=None,
     familia=None,
     output_path=None,
-    min_dias_semana=7,  # Nuevo parámetro, por defecto 7
-    guardar_interim=False  # Nuevo parámetro para guardar en interim
+    min_dias_semana=7,
+    guardar_interim=False
 ):
     """
     Limpia, homogeneiza y agrega los datos diarios a series semanales completas para la familia indicada.
@@ -464,128 +516,64 @@ def transformar_a_series_temporales(
 
     Retorna:
     - DataFrame con series temporales semanales
+
+    Esta versión utiliza funciones modulares para:
+    - Homogeneización de datos (homogenization)
+    - Imputación avanzada de nulos (impute_null_values)
+    - Lógica de Semana Santa (mark_easter, get_easter_weeks)
+    - Agregación semanal (aggregate_weekly)
     """
     df = df_raw.copy()
+
+    # Homogeneización y filtrado
+    df = homogenization(df)
     df['fecha'] = pd.to_datetime(df['fecha'])
+
     # Si no se pasan fechas, usar el rango del DataFrame
     if fecha_inicio is None:
         fecha_inicio = df['fecha'].min()
     if fecha_fin is None:
         fecha_fin = df['fecha'].max()
-
-    # Filtrar rango de fechas
     df = df[(df['fecha'] >= fecha_inicio) & (df['fecha'] <= fecha_fin)]
 
-    # Si no se pasa familia, usar la primera familia encontrada (o todas si no se filtra)
-    if familia is None and 'familia' in df.columns:
-        familias_unicas = df['familia'].unique()
-        if len(familias_unicas) == 1:
-            familia = familias_unicas[0]
-        else:
-            print(f"AVISO: No se especificó familia, usando la primera encontrada: {familias_unicas[0]}")
-            familia = familias_unicas[0]
-    # Homogeneizar familia si es necesario (ejemplo: 'BEBIDA' a 'BEBIDAS')
-    if 'familia' in df.columns:
-        df.loc[df['familia'] == 'BEBIDA', 'familia'] = 'BEBIDAS'
     # Filtrar familia si se proporciona
     if familia is not None:
         df = df[df['familia'] == familia]
-    # Imputar valores nulos básicos
-    for col in ['base_imponible', 'total']:
-        if col in df.columns:
-            df[col] = df[col].fillna(0)
+
+    # Imputar valores nulos avanzados
+    df = impute_null_values(df, cols_nulos=['base_imponible', 'total'], verbose=False)
+
     # Asegurar columnas exógenas
     if 'is_summer_peak' not in df.columns:
         df['is_summer_peak'] = df['fecha'].dt.month.isin([7, 8]).astype(int)
-    
-        # Asegura que las columnas 'year' y 'week' sean Int64 (nullable) si existen
-        for col in ["year", "week"]:
-            if col in df.columns:
-                # Si la columna es unsigned, primero convertir a float para evitar errores, luego a Int64
-                if pd.api.types.is_unsigned_integer_dtype(df[col]):
-                    df[col] = df[col].astype(float).astype('Int64')
-                else:
-                    df[col] = df[col].astype('Int64')
-    
-    # Definir los rangos de Semana Santa por año (según el calendario)
-    if 'is_easter' not in df.columns:
-        easter_ranges = {
-            2023: pd.date_range('2023-04-03', '2023-04-09'),  # Semana Santa 2023
-            2024: pd.date_range('2024-03-25', '2024-03-31'),  # Semana Santa 2024
-            2025: pd.date_range('2025-04-14', '2025-04-20'),  # Semana Santa 2025
-        }
-        
-        # Crear la columna is_easter con 0 por defecto
-        df['is_easter'] = 0
-        
-        # Marcar las fechas de Semana Santa
-        for year, dates in easter_ranges.items():
-            df.loc[df['fecha'].dt.date.isin(dates.date), 'is_easter'] = 1
-            
-    # Calcular explícitamente las semanas de Semana Santa
-    easter_weeks = []
-    for year, dates in {
-            2023: pd.date_range('2023-04-03', '2023-04-09'),  # Semana Santa 2023
-            2024: pd.date_range('2024-03-25', '2024-03-31'),  # Semana Santa 2024
-            2025: pd.date_range('2025-04-14', '2025-04-20'),  # Semana Santa 2025
-        }.items():
-        for date in dates:
-            easter_weeks.append((date.isocalendar().year, date.isocalendar().week))
-    # Eliminar duplicados
-    easter_weeks = list(set(easter_weeks))
-    # Calcular semana ISO
-    iso = df['fecha'].dt.isocalendar()
-    df['year_iso'] = iso['year']
-    df['week_iso'] = iso['week']
-    
-    # Contar días únicos por semana/familia
-    conteo_dias = df.groupby(['year_iso','week_iso','familia'])['fecha'].nunique().reset_index(name='dias_semana')
+
+    # Marcar Semana Santa
+    df = mark_easter(df)
+
     # Agregación semanal
-    df_semanal = (
-        df.groupby(['year_iso','week_iso','familia'], as_index=False)
-          .agg({
-             'base_imponible': 'sum',
-             'is_summer_peak': 'max',
-             'is_easter':      'max'  # Usamos max para conservar 1 si cualquier día de la semana es Semana Santa
-          })
-        .merge(conteo_dias, on=['year_iso','week_iso','familia'])
-    )
-    # Filtrar solo semanas con el mínimo de días
-    df_semanal = df_semanal[df_semanal['dias_semana'] >= min_dias_semana]
-    
+    df_semanal = aggregate_weekly(df, min_dias_semana=min_dias_semana)
+
     # Filtrar familia solo si se especifica
     if familia is not None:
         df_familia_semanal = df_semanal.query(f"familia=='{familia}'").copy()
     else:
         df_familia_semanal = df_semanal.copy()
-    
+
     # Asegurar que las semanas de Semana Santa estén marcadas correctamente
-    for year_iso, week_iso in easter_weeks:
-        mask = (df_familia_semanal['year_iso'] == year_iso) & (df_familia_semanal['week_iso'] == week_iso)
+    easter_weeks = get_easter_weeks()
+    for year, week in easter_weeks:
+        mask = (df_familia_semanal['year'] == year) & (df_familia_semanal['week'] == week)
         if len(df_familia_semanal[mask]) > 0:
             df_familia_semanal.loc[mask, 'is_easter'] = 1
-    
-    df_familia_semanal.rename(columns={'year_iso':'year','week_iso':'week'}, inplace=True)
-
-    # Añadir columna week_start: primer lunes de cada semana ISO
-    # Esto permite un identificador temporal único y ordenable
-    df_familia_semanal['week_start'] = pd.to_datetime(
-        df_familia_semanal['year'].astype(str) + '-W' + df_familia_semanal['week'].astype(str) + '-1',
-        format='%G-W%V-%u'
-    )
-
-    # Ordenar por week_start para mantener la lógica temporal inequívoca
-    df_familia_semanal = df_familia_semanal.sort_values('week_start').reset_index(drop=True)
 
     # Guardar el resultado si se proporciona un path de salida
     if output_path:
         df_familia_semanal.to_parquet(str(output_path), index=False)
         print(f"Series temporales guardadas en: {output_path}")
-    
+        
     # Guardar en interim si se solicita
     if guardar_interim:
         guardar_time_series_interim(df_familia_semanal, familia)
-    
     return df_familia_semanal
 
 def guardar_time_series_interim(df, familia, interim_dir=None):

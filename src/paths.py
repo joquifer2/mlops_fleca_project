@@ -18,6 +18,9 @@ RAW_DIR = DATA_DIR / 'raw'
 INTERIM_DIR = DATA_DIR / 'interim'
 PROCESSED_DIR = DATA_DIR / 'processed'
 
+# Ruta centralizada para el archivo parquet de datos raw descargados de BigQuery
+RAW_BQ_PARQUET = RAW_DIR / "raw_data_bq_forecasting.parquet"
+
 # Directorios de modelos
 MODELS_DIR = ROOT_DIR / 'models'
 
@@ -38,5 +41,4 @@ if not Path(INTERIM_DIR).exists():
 if not Path(RAW_DIR).exists():
     os.makedirs(RAW_DIR)
 
-# Ruta centralizada para el archivo parquet de datos raw descargados de BigQuery
-RAW_BQ_PARQUET = RAW_DIR / "raw_data_bq_forecasting.parquet"
+
