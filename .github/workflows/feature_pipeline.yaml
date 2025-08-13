@@ -1,0 +1,54 @@
+name: Fleca MLOps Feature Pipeline
+
+on:
+  schedule:
+    - cron: '0 18 * * 2'  # Cada martes a las 18:00 (UTC)
+  workflow_dispatch:
+
+jobs:
+  feature_pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Descargar el código del repositorio
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # 2. Instalar Python y Poetry
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+
+      - name: Install Poetry
+        uses: snok/install-poetry-action@v1
+        with:
+          version: latest
+
+      # 3. Instalar las dependencias del proyecto
+      - name: Install project dependencies
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry install --no-interaction --no-ansi
+
+      # 4. Guardar el archivo de credenciales de Google Cloud en el runner
+      # El runner es el ordenador virtual donde se ejecuta todo
+      - name: Write Google credentials to file
+        run: echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > /tmp/credentials.json
+
+      # 5. Configurar la variable de entorno para que las librerías encuentren el archivo
+      - name: Set GOOGLE_APPLICATION_CREDENTIALS env
+        run: echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/credentials.json" >> $GITHUB_ENV
+
+      # 6. Ejecutar el pipeline (notebook)
+      - name: Run feature pipeline notebook
+        env:
+          HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+        run: |
+          poetry run jupyter nbconvert --to notebook --execute notebooks/13_feature_pipeline.ipynb --inplace
+
+      # 7. (opcional) Subir el notebook ejecutado como artefacto para poder revisarlo
+      - name: Upload executed notebook
+        uses: actions/upload-artifact@v2
+        with:
+          name: executed-feature-pipeline-notebook
+          path: notebooks/13_feature_pipeline.ipynb
