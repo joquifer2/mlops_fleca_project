@@ -268,8 +268,11 @@ def load_raw_data(
     parquet_path_obj = Path(parquet_path)
     if descargar_bq or not parquet_path_obj.exists():
         print(f"Descargando datos desde BigQuery porque descargar_bq={descargar_bq} o no existe el archivo {parquet_path}")
-        descargar_datos_bigquery()
-
+        df_bq = descargar_datos_bigquery()
+        # El archivo generado por descargar_datos_bigquery tiene la fecha actual en el nombre
+        fecha_actual = datetime.now().strftime("%Y%m%d")
+        parquet_path = RAW_DIR / f"raw_data_bq_forecasting_{fecha_actual}.parquet"
+        print(f"Usando archivo recién generado: {parquet_path}")
 
     # 2. Cargar datos raw desde parquet
     df_raw = cargar_datos_raw(parquet_path)
