@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from paths import ROOT_DIR
+from src.paths import ROOT_DIR
 
 # Cargamos las variables de entorno
 load_dotenv(os.path.join(ROOT_DIR, ".env"))
