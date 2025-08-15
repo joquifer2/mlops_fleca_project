@@ -13,7 +13,9 @@ except KeyError as e:
     raise Exception(f'Create a .env file on the {ROOT_DIR} directory with the following variables: {e}')
 
 # Eliminar FEATURE_GROUP_NAME and FEATURE_GROUP:_VERSION, and use FEATURE_GROUP_METADATA instead
-FEATURE_GROUP_NAME = 'time_series_bolleria_feature_group'
+FEATURE_GROUP_NAME = 'times_series_bolleria_feature_group'
 FEATURE_GROUP_VERSION = 1
 FEATURE_VIEW_VERSION = 1
+
+
 
