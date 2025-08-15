@@ -33,7 +33,10 @@ jobs:
       # 4. Guardar el archivo de credenciales de Google Cloud en el runner
       # El runner es el ordenador virtual donde se ejecuta todo
       - name: Write Google credentials to file
-        run: echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > /tmp/credentials.json
+        run: |
+          cat <<EOF > /tmp/credentials.json
+          ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          EOF
 
       # 5. Configurar la variable de entorno para que las librerías encuentren el archivo
       - name: Set GOOGLE_APPLICATION_CREDENTIALS env
