@@ -96,7 +96,9 @@ def train_evaluate_xgboost(X_train, y_train, X_test, y_test, params=None):
 
     # Instancia y entrena el modelo
     model = xgb.XGBRegressor(**params)
-    model.fit(X_train, y_train)
+    model.fit(X_train, y_train, 
+              eval_set=[(X_train, y_train), (X_test, y_test)],
+              verbose=False)
 
     # Predicción
     y_pred = model.predict(X_test)

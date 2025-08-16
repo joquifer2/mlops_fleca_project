@@ -26,10 +26,14 @@ def train_test_split(
     """
 
     
-    # Conversión robusta de split_date a datetime
+    # Conversión robusta de split_date y columna week_start a datetime
     split_date = pd.to_datetime(split_date)
-    train_data = df[df['week_start'] <= split_date].reset_index(drop=True)
-    test_data = df[df['week_start'] > split_date].reset_index(drop=True)
+    df_copy = df.copy()
+    df_copy['week_start'] = pd.to_datetime(df_copy['week_start'])
+    
+    # División temporal
+    train_data = df_copy[df_copy['week_start'] <= split_date].reset_index(drop=True)
+    test_data = df_copy[df_copy['week_start'] > split_date].reset_index(drop=True)
 
     # Separar características (X) y objetivo (y)
     X_train = train_data.drop(columns=[target])

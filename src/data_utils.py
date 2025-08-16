@@ -73,6 +73,39 @@ RAW_DIR = PATHS.get('RAW_DIR', None)
 INTERIM_DIR = PATHS.get('INTERIM_DIR', None)
 PROCESSED_DIR = PATHS.get('PROCESSED_DIR', None)
 
+# --- Conversión robusta de epoch a datetime ---
+def coerce_epoch_to_datetime(series: pd.Series) -> pd.Series:
+    """
+    Convierte una serie que puede contener marcas de tiempo en epoch (ns/us/ms/s)
+    a dtype datetime64[ns] naive en UTC. Si ya es datetime, la retorna tal cual.
+    """
+    import pandas as pd
+    s = series
+    try:
+        if pd.api.types.is_datetime64_any_dtype(s):
+            return s
+        if pd.api.types.is_integer_dtype(s) or pd.api.types.is_float_dtype(s) or s.dtype == 'object':
+            s_num = pd.to_numeric(s, errors='coerce')
+            # Evitar 1970-01-01 por ceros o negativos: tratarlos como NaN
+            s_num = s_num.where(s_num > 0)
+            sample = s_num.dropna()
+            if sample.empty:
+                return pd.to_datetime(s, errors='coerce')
+            med = float(sample.astype('int64').abs().median())
+            if med >= 1e17:
+                unit = 'ns'
+            elif med >= 1e14:
+                unit = 'us'
+            elif med >= 1e11:
+                unit = 'ms'
+            else:
+                unit = 's'
+            dt = pd.to_datetime(s_num, unit=unit, utc=True)
+            return dt.dt.tz_convert('UTC').dt.tz_localize(None)
+        return pd.to_datetime(s, errors='coerce')
+    except Exception:
+        return pd.to_datetime(s, errors='coerce')
+
 # --- Descargar datos desde BigQuery (todo el histórico) ---
 def descargar_datos_bigquery_histórico():
 
@@ -669,12 +702,12 @@ def generar_target(df, columna='base_imponible', periodos_adelante=1):
 
 def transformar_features_target(
     data, 
-    lags_list=[1, 2, 3, 4], 
+    lags_list=[1, 2, 3, 52], 
     columna_target='base_imponible',
-    cols_exogenas=None,
+    cols_exogenas=True,
     periodos_adelante=1,
     eliminar_nulos=True,
-    return_format='tuple'
+    return_format='Dataframe'
 ):
     """
     Prepara features (lags) y target para modelado de forecasting.
@@ -698,6 +731,7 @@ def transformar_features_target(
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
     
+
     # Manejar diferentes formatos de entrada (DataFrame o tupla de feature_view.training_data())
     if isinstance(data, tuple):
         logger.info(f"Detectada entrada tipo tupla con {len(data)} elementos")
@@ -715,6 +749,11 @@ def transformar_features_target(
     if cols_exogenas is None:
         cols_exogenas = []
     
+    # Normalizar columnas temporales si existen usando la función global
+    for time_col in ['week_start', 'fecha']:
+        if time_col in df.columns:
+            df[time_col] = coerce_epoch_to_datetime(df[time_col])
+
     # Generar lags
     df_features = generar_lags(df, lags_list, columna_target)
     
