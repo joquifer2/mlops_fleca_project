@@ -668,29 +668,50 @@ def generar_target(df, columna='base_imponible', periodos_adelante=1):
     return df_target, target_name
 
 def transformar_features_target(
-    df, 
+    data, 
     lags_list=[1, 2, 3, 4], 
     columna_target='base_imponible',
     cols_exogenas=None,
     periodos_adelante=1,
-    eliminar_nulos=True
+    eliminar_nulos=True,
+    return_format='tuple'
 ):
     """
     Prepara features (lags) y target para modelado de forecasting.
+    Acepta tanto DataFrames como tuplas devueltas por feature_view.training_data().
     
     Parámetros:
-    - df: DataFrame con serie temporal
+    - data: DataFrame con serie temporal o tupla (X, y) de feature_view.training_data()
     - lags_list: Lista de lags a generar
     - columna_target: Columna que se usará como target
     - cols_exogenas: Lista de columnas exógenas a incluir en features
     - periodos_adelante: Número de periodos a predecir
     - eliminar_nulos: Si True, elimina filas con valores nulos
+    - return_format: Formato de retorno ('tuple', 'dataframe' o 'dict')
     
-    Retorna:
-    - X: DataFrame con features
-    - y: Series con target
-    - df_completo: DataFrame con features y target
+    Retorna según return_format:
+    - 'tuple': (X, y, df_completo)
+    - 'dataframe': DataFrame combinado con features y target
+    - 'dict': {'features': X, 'target': y, 'completo': df_completo}
     """
+    import logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
+    
+    # Manejar diferentes formatos de entrada (DataFrame o tupla de feature_view.training_data())
+    if isinstance(data, tuple):
+        logger.info(f"Detectada entrada tipo tupla con {len(data)} elementos")
+        # Extraer el DataFrame de características de la tupla
+        if len(data) >= 1:
+            df = data[0]
+            logger.info(f"Usando el primer elemento de la tupla como DataFrame: {df.shape}")
+        else:
+            raise ValueError("La tupla de entrada está vacía")
+    else:
+        # Si es un DataFrame, usarlo directamente
+        df = data
+        logger.info(f"Usando DataFrame de entrada: {df.shape}")
+    
     if cols_exogenas is None:
         cols_exogenas = []
     
@@ -724,8 +745,22 @@ def transformar_features_target(
         X = X[mask_completos]
         y = y[mask_completos]
         df_completo = df_completo[mask_completos]
-
-    return X, y, df_completo
+    
+    # Retornar en el formato solicitado
+    if return_format == 'dataframe':
+        # Combinar features y target en un solo DataFrame
+        features_and_target = X.copy()
+        features_and_target['target'] = y
+        logger.info(f"Retornando DataFrame combinado: {features_and_target.shape}")
+        return features_and_target
+    elif return_format == 'dict':
+        # Retornar un diccionario
+        result_dict = {'features': X, 'target': y, 'completo': df_completo}
+        logger.info(f"Retornando diccionario con keys: {list(result_dict.keys())}")
+        return result_dict
+    else:  # 'tuple' por defecto
+        logger.info(f"Retornando tupla (X, y, df_completo)")
+        return X, y, df_completo
 
 def guardar_datos_procesados(X, y, df_completo, familia='BOLLERIA', processed_dir=None):
     """

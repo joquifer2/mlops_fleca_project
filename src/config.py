@@ -15,6 +15,7 @@ except KeyError as e:
 # Eliminar FEATURE_GROUP_NAME and FEATURE_GROUP:_VERSION, and use FEATURE_GROUP_METADATA instead
 FEATURE_GROUP_NAME = 'times_series_bolleria_feature_group'
 FEATURE_GROUP_VERSION = 1
+FEATURE_VIEW_NAME = 'times_series_bolleria_feature_view'
 FEATURE_VIEW_VERSION = 1
 
 
