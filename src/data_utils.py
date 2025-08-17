@@ -159,15 +159,72 @@ def descargar_datos_bigquery_histórico():
     return df
 
 
-def descargar_datos_bigquery():
+def normalizar_fecha_para_bigquery(fecha, valor_por_defecto=None):
+    """
+    Normaliza una fecha a formato YYYY-MM-DD para BigQuery.
+    
+    NOTA: Para casos simples, es preferible usar directamente:
+    pd.to_datetime(fecha).strftime('%Y-%m-%d')
+    
+    Esta función se mantiene para casos más complejos o cuando se necesita
+    un manejo de errores robusto.
+    
+    Args:
+        fecha: La fecha a normalizar (puede ser str, datetime, date, etc.)
+        valor_por_defecto: Valor a devolver si la normalización falla
+        
+    Returns:
+        String en formato YYYY-MM-DD o valor_por_defecto si falla
+    """
+    if fecha is None:
+        return valor_por_defecto
+        
+    try:
+        # Si ya es string, verificar formato
+        if isinstance(fecha, str):
+            # Si tiene componente de hora (más de 10 caracteres), truncarlo
+            if len(fecha) > 10:
+                fecha = fecha[:10]
+            # Validar formato YYYY-MM-DD
+            pd.to_datetime(fecha)
+            return fecha
+            
+        # Si es un objeto con método strftime, usarlo
+        if hasattr(fecha, 'strftime'):
+            return fecha.strftime('%Y-%m-%d')
+            
+        # En otros casos, convertir a string y formatear
+        return pd.to_datetime(fecha).strftime('%Y-%m-%d')
+    except Exception as e:
+        print(f"Error al normalizar fecha '{fecha}': {e}")
+        return valor_por_defecto
+
+def descargar_datos_bigquery(fecha_inicio='2023-01-02', fecha_fin=None):
+    """
+    Descarga datos de BigQuery usando fechas en formato correcto para campos DATE.
+    BigQuery espera fechas en formato 'YYYY-MM-DD' estricto para campos DATE.
+    
+    Args:
+        fecha_inicio: Fecha inicial para filtrar datos (str o datetime)
+        fecha_fin: Fecha final para filtrar datos (str o datetime, opcional)
+        
+    Returns:
+        DataFrame con los datos descargados de BigQuery
+    """
     from datetime import datetime
     print("Iniciando conexión con BigQuery...")
     client = bigquery.Client()
     print("Conexión establecida.")
-
-    # Solo descargar la segunda tabla
+    
+    # Formatear fechas directamente a YYYY-MM-DD
+    fecha_inicio_bq = pd.to_datetime(fecha_inicio).strftime('%Y-%m-%d')
+    fecha_fin_bq = pd.to_datetime(fecha_fin).strftime('%Y-%m-%d') if fecha_fin is not None else None
+    
+    print(f"Usando fechas en consulta SQL: fecha_inicio='{fecha_inicio_bq}' y fecha_fin='{fecha_fin_bq}'")
     print("Descargando datos de fleca-del-port.fleca_ventas_dia.t_facturas_dia_extendida_2023 ...")
-    query = """
+    
+    # Construir la consulta con fechas literales ya formateadas correctamente
+    query = f"""
     SELECT 
         fecha,
         n_factura,
@@ -179,8 +236,14 @@ def descargar_datos_bigquery():
         tipo_IVA,
         total
     FROM `fleca-del-port.fleca_ventas_dia.t_facturas_dia_extendida_2023`
-    WHERE fecha >= '2025-08-04' 
-    """
+    WHERE fecha >= '{fecha_inicio_bq}'"""
+    
+    if fecha_fin_bq:
+        query += f" AND fecha <= '{fecha_fin_bq}'"
+        
+    print("Ejecutando consulta SQL:")
+    print(query)
+    
     df = client.query(query).to_dataframe()
     print(f"Filas descargadas de la segunda tabla: {len(df)}")
 
@@ -282,6 +345,15 @@ def load_raw_data(
     """
     Descarga, carga y valida los datos raw antes de la agregación semanal.
     Devuelve el DataFrame limpio y listo para agregación.
+    
+    Args:
+        parquet_path: Ruta al archivo parquet con datos previamente descargados
+        fecha_inicio: Fecha de inicio para filtrar datos (str o datetime)
+        fecha_fin: Fecha final para filtrar datos (str o datetime)
+        descargar_bq: Si True, descarga datos frescos desde BigQuery
+        
+    Returns:
+        DataFrame con los datos raw filtrados por fecha
     """
 
     # Obtener los paths centralizados
@@ -292,16 +364,20 @@ def load_raw_data(
     if parquet_path is None:
         parquet_path = raw_bq_parquet
 
+    # Si no se pasa fecha_inicio, usar un valor predeterminado seguro
+    if fecha_inicio is None:
+        fecha_inicio = '2023-01-02'
+        
     # Si no se pasa fecha_fin, usar el último domingo completo
     if fecha_fin is None:
         fecha_fin = get_last_sunday()
-
 
     # 1. Descargar datos desde BigQuery si se indica o si el archivo no existe
     parquet_path_obj = Path(parquet_path)
     if descargar_bq or not parquet_path_obj.exists():
         print(f"Descargando datos desde BigQuery porque descargar_bq={descargar_bq} o no existe el archivo {parquet_path}")
-        df_bq = descargar_datos_bigquery()
+        # Pasar explícitamente fecha_inicio y fecha_fin a descargar_datos_bigquery
+        df_bq = descargar_datos_bigquery(fecha_inicio=fecha_inicio, fecha_fin=fecha_fin)
         # El archivo generado por descargar_datos_bigquery tiene la fecha actual en el nombre
         fecha_actual = datetime.now().strftime("%Y%m%d")
         parquet_path = RAW_DIR / f"raw_data_bq_forecasting_{fecha_actual}.parquet"
@@ -338,6 +414,108 @@ def load_raw_data(
         df_raw['is_summer_peak'] = df_raw['fecha'].dt.month.isin([7,8]).astype(int)
     if 'is_easter' not in df_raw.columns:
         df_raw['is_easter'] = 0
+    return df_raw
+
+# Cargar datos históricos
+
+def load_raw_data_historico(
+    parquet_path=None,
+    fecha_inicio=None,
+    fecha_fin=None,
+    descargar_bq=False,
+    usar_semana_completa=True
+):
+    """
+    Versión histórica de load_raw_data que usa descargar_datos_bigquery_histórico.
+    Descarga, carga y valida los datos raw completos antes de la agregación.
+    
+    Args:
+        parquet_path: Ruta al archivo parquet con datos previamente descargados
+        fecha_inicio: Fecha de inicio para filtrar datos (str o datetime)
+        fecha_fin: Fecha final para filtrar datos (str o datetime)
+        descargar_bq: Si True, descarga datos frescos desde BigQuery
+        usar_semana_completa: Si True y no se especifica fecha_fin, ajusta la fecha final
+                             al último domingo completo (para asegurar semanas completas)
+        
+    Returns:
+        DataFrame con los datos raw filtrados por fecha
+    """
+    # Obtener los paths centralizados
+    from src.paths import RAW_DIR
+    from pathlib import Path
+    from datetime import datetime, timedelta
+    
+    # 1. Descargar datos históricos completos si se indica
+    if descargar_bq or parquet_path is None:
+        print(f"Descargando datos históricos completos desde BigQuery")
+        # Usar la función de descarga histórica que combina ambas tablas
+        from src.data_utils import descargar_datos_bigquery_histórico
+        df_raw = descargar_datos_bigquery_histórico()
+        # La función ya guarda el archivo, así que no necesitamos hacer nada más aquí
+    elif parquet_path is not None:
+        # 2. Cargar datos raw desde parquet si no se descarga
+        from src.data_utils import cargar_datos_raw
+        print(f"Cargando datos desde archivo: {parquet_path}")
+        df_raw = cargar_datos_raw(parquet_path)
+    
+    # Asegurar que la columna 'fecha' es datetime antes de cualquier filtrado
+    if 'fecha' in df_raw.columns:
+        df_raw['fecha'] = pd.to_datetime(df_raw['fecha'])
+    elif 'FECHA' in df_raw.columns:
+        df_raw = df_raw.rename(columns={'FECHA': 'fecha'})
+        df_raw['fecha'] = pd.to_datetime(df_raw['fecha'])
+        
+    # Si usar_semana_completa es True y no se especificó fecha_fin, 
+    # calcular la última fecha que completa una semana entera (domingo)
+    if usar_semana_completa and fecha_fin is None:
+        # Obtener la fecha máxima del dataset
+        max_date = df_raw['fecha'].max()
+        
+        # Calcular el último domingo anterior o igual a max_date
+        # 6 = Sunday en pandas (0 = Monday)
+        days_until_sunday = 6 - max_date.dayofweek
+        if days_until_sunday < 0:  # Si max_date es después del domingo
+            days_until_sunday += 7
+        
+        # Si max_date ya es domingo (days_until_sunday=0), se mantiene
+        # Si no, retrocedemos al domingo anterior
+        if days_until_sunday > 0:
+            fecha_fin = max_date - timedelta(days=max_date.dayofweek + 1)
+        else:
+            fecha_fin = max_date
+        
+        print(f"Ajustando fecha final a último domingo completo: {fecha_fin.date()}")
+
+    # 3. Filtrar por fechas solo si se especifican
+    if fecha_inicio is not None:
+        fecha_inicio_dt = pd.to_datetime(fecha_inicio)
+        df_raw = df_raw[df_raw['fecha'] >= fecha_inicio_dt]
+        print(f"Filtrando datos desde: {fecha_inicio_dt}")
+    if fecha_fin is not None:
+        fecha_fin_dt = pd.to_datetime(fecha_fin)
+        df_raw = df_raw[df_raw['fecha'] <= fecha_fin_dt]
+        print(f"Filtrando datos hasta: {fecha_fin_dt}")
+
+    # Validar continuidad solo si ambos están definidos
+    if fecha_inicio is not None and fecha_fin is not None:
+        from src.data_utils import validar_fechas_completas
+        validar_fechas_completas(df_raw, fecha_col='fecha', fecha_inicio=fecha_inicio, fecha_fin=fecha_fin)
+    
+    # 4. Homogeneizar familia
+    if 'familia' in df_raw.columns:
+        df_raw.loc[df_raw['familia'] == 'BEBIDA', 'familia'] = 'BEBIDAS'
+
+    # 5. Imputar nulos básicos
+    for col in ['base_imponible', 'total']:
+        if col in df_raw.columns:
+            df_raw[col] = df_raw[col].fillna(0)
+            
+    # 6. Variables exógenas mínimas
+    if 'is_summer_peak' not in df_raw.columns:
+        df_raw['is_summer_peak'] = df_raw['fecha'].dt.month.isin([7,8]).astype(int)
+    if 'is_easter' not in df_raw.columns:
+        df_raw['is_easter'] = 0
+        
     return df_raw
 
 
@@ -548,12 +726,13 @@ def transformar_a_series_temporales(
     - familia: Familia de productos a filtrar (str, opcional)
     - output_path: Path opcional para guardar el resultado (str o Path)
     - min_dias_semana: Mínimo de días para considerar una semana (int, por defecto 7)
-    - guardar_interim: Si True, guarda el resultado en la carpeta interim (bool)
-
-    Retorna:
-    - DataFrame con series temporales semanales
-
-    Esta versión utiliza funciones modulares para:
+        # Si ambos son None, no filtrar por fechas (usar todo el DataFrame)
+        if fecha_inicio is not None or fecha_fin is not None:
+            if fecha_inicio is None:
+                fecha_inicio = df['fecha'].min()
+            if fecha_fin is None:
+                fecha_fin = df['fecha'].max()
+            df = df[(df['fecha'] >= fecha_inicio) & (df['fecha'] <= fecha_fin)]
     - Homogeneización de datos (homogenization)
     - Imputación avanzada de nulos (impute_null_values)
     - Lógica de Semana Santa (mark_easter, get_easter_weeks)
@@ -897,3 +1076,5 @@ def subir_df_a_bigquery(X=None, y=None, df_completo=None, dataset_base="features
         else:
             resultados[nombre] = False
     return resultados
+
+
