@@ -18,5 +18,18 @@ FEATURE_GROUP_VERSION = 1
 FEATURE_VIEW_NAME = 'times_series_bolleria_feature_view'
 FEATURE_VIEW_VERSION = 1
 
+# Configuración de lags y columnas objetivo
+
+COLUMNA_TARGET = "base_imponible"
+COLS_EXOGENAS = ["is_easter", "is_summer_peak"]
+# Configuración de periodos
+PERIODOS_ADELANTE = 1  # Número de semanas a predecir
+
+ELIMINAR_NULOS = True
+
+MODEL_NAME = "fleca_bolleria_predictor_next_week"
+MODEL_VERSION = 1
+MODEL_FILE = "xgboost_hopsworks.pkl"
+
 
 
