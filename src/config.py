@@ -31,5 +31,44 @@ MODEL_NAME = "fleca_bolleria_predictor_next_week"
 MODEL_VERSION = 1
 MODEL_FILE = "xgboost_hopsworks.pkl"
 
+# Configuración del feature group y feature view de predicciones
+PRED_FEATURE_GROUP_NAME = "bolleria_predicciones_feature_group"
+PRED_FEATURE_GROUP_VERSION = 1
+PRED_FEATURE_VIEW_NAME = "bolleria_predicciones_feature_view" 
+PRED_FEATURE_VIEW_VERSION = 1
+
+# Metadatos para feature groups y feature views
+PRED_FEATURE_GROUP_METADATA = {
+    "name": PRED_FEATURE_GROUP_NAME,
+    "version": PRED_FEATURE_GROUP_VERSION,
+    "description": "Predicciones semanales de base_imponible para bolleria",
+    "primary_key": ["week_start"],
+    "online_enabled": False,
+    "statistics_config": {"enabled": True},
+    "event_time": "week_start"
+}
+
+PRED_FEATURE_VIEW_METADATA = {
+    "name": PRED_FEATURE_VIEW_NAME,
+    "version": PRED_FEATURE_VIEW_VERSION,
+    "description": "Vista de predicciones semanales de bolleria"
+}
+
+# También definimos metadatos para los datos históricos (ejemplo de metadatos reutilizables)
+HISTORICAL_FEATURE_GROUP_METADATA = {
+    "name": FEATURE_GROUP_NAME,
+    "version": FEATURE_GROUP_VERSION,
+    "description": "Datos históricos de ventas de bolleria",
+    "primary_key": ["week_start"],
+    "online_enabled": False,
+    "statistics_config": {"enabled": True},
+    "event_time": "week_start"
+}
+
+HISTORICAL_FEATURE_VIEW_METADATA = {
+    "name": FEATURE_VIEW_NAME,
+    "version": FEATURE_VIEW_VERSION,
+    "description": "Vista de datos históricos de ventas de bolleria"
+}
 
 
