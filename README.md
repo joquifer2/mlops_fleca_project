@@ -55,3 +55,19 @@ Project Organization
 --------
 
 <p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
+
+## Arranque del servidor MLflow local
+
+Para iniciar el servidor MLflow en tu entorno local, ejecuta el siguiente comando en una terminal desde la raíz del proyecto:
+
+```bat
+mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns --host 0.0.0.0 --port 5000
+```
+
+O simplemente ejecuta el script incluido:
+
+```bat
+start_mlflow_server.bat
+```
+
+Esto iniciará MLflow en [http://localhost:5000](http://localhost:5000) y podrás registrar y visualizar tus experimentos.

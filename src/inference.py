@@ -30,50 +30,6 @@ logger = logging.getLogger('inference')
 # 3. Mejor legibilidad: Los parámetros tienen nombres descriptivos en el diccionario
 # 4. Reutilización: Podemos usar los mismos metadatos en diferentes partes del código
 
-def esperar_job_hopsworks(job, timeout=300, intervalo=5):
-    """
-    Espera a que un job de Hopsworks termine con un timeout específico.
-    
-    Args:
-        job: Objeto Job de Hopsworks
-        timeout: Tiempo máximo de espera en segundos
-        intervalo: Intervalo de comprobación en segundos
-        
-    Returns:
-        bool: True si el job finalizó con éxito, False en caso contrario
-    """
-    # Esta función solo se proporciona como referencia para futuras implementaciones
-    # que requieran monitoreo asíncrono de jobs. Actualmente no se utiliza ya que
-    # estamos usando wait_for_job=True en las operaciones de insert.
-    
-    if not hasattr(job, 'get_status'):
-        logger.warning("El objeto job no tiene el método get_status. No se puede monitorear.")
-        return False
-        
-    import time
-    start_time = time.time()
-    
-    while True:
-        try:
-            status = job.get_status()
-            logger.info(f"Estado del job: {status}")
-            
-            if status == 'SUCCEEDED':
-                logger.info("✅ Job completado con éxito")
-                return True
-            elif status in ['FAILED', 'KILLED', 'ERROR']:
-                logger.error(f"❌ Job finalizado con estado: {status}")
-                return False
-                
-            if time.time() - start_time > timeout:
-                logger.error(f"⌛ Timeout alcanzado ({timeout}s). Último estado: {status}")
-                return False
-                
-            time.sleep(intervalo)
-        except Exception as e:
-            logger.error(f"Error al monitorear el job: {str(e)}")
-            return False
-
 
 
 def conectar_hopsworks_feature_store():
@@ -118,6 +74,7 @@ def cargar_y_transformar_feature_view(feature_store, modelo, columna_target, col
     # Extraer lags del modelo (nombres de columnas que contienen 'lag')
     lags_list = [int(col.split('lag')[-1]) for col in modelo.feature_names_in_ if 'lag' in col]
     print(f"Lags detectados en el modelo: {lags_list}")
+    
     df = transformar_features_target(
         df,
         lags_list=lags_list,

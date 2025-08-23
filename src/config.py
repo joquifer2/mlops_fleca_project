@@ -1,3 +1,4 @@
+
 import os
 from dotenv import load_dotenv
 from src.paths import ROOT_DIR
@@ -26,6 +27,8 @@ COLS_EXOGENAS = ["is_easter", "is_summer_peak"]
 PERIODOS_ADELANTE = 1  # Número de semanas a predecir
 
 ELIMINAR_NULOS = True
+
+LAGS = [1, 2, 3, 52]
 
 MODEL_NAME = "fleca_bolleria_predictor_next_week"
 MODEL_VERSION = 1
@@ -72,3 +75,6 @@ HISTORICAL_FEATURE_VIEW_METADATA = {
 }
 
 
+# ML FLOW
+# Configuración de MLflow
+MLFLOW_TRACKING_URI = "http://localhost:5000"  # Cambia esto si usas un servidor remoto
