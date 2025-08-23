@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Workspace/mlops_fleca_project/notebooks/mlruns/496802327838755740/b072a4cdfd4443bbaa1c64a2222cdeb7/artifacts
+end_time: 1755969465708
+entry_point_name: ''
+experiment_id: '496802327838755740'
+lifecycle_stage: active
+run_id: b072a4cdfd4443bbaa1c64a2222cdeb7
+run_name: Lasso
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1755969464420
+status: 3
+tags: []
+user_id: jordi

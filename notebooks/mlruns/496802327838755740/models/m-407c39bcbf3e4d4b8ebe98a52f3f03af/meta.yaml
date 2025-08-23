@@ -1,0 +1,10 @@
+artifact_location: file:///c:/Workspace/mlops_fleca_project/notebooks/mlruns/496802327838755740/models/m-407c39bcbf3e4d4b8ebe98a52f3f03af/artifacts
+creation_timestamp: 1755969465775
+experiment_id: '496802327838755740'
+last_updated_timestamp: 1755969467065
+model_id: m-407c39bcbf3e4d4b8ebe98a52f3f03af
+model_type: null
+name: model
+source_run_id: be1418e0ac4647bf878e9fd4a10d3d8d
+status: 2
+status_message: null

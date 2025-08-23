@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Workspace/mlops_fleca_project/notebooks/mlruns/496802327838755740/be1418e0ac4647bf878e9fd4a10d3d8d/artifacts
+end_time: 1755969467069
+entry_point_name: ''
+experiment_id: '496802327838755740'
+lifecycle_stage: active
+run_id: be1418e0ac4647bf878e9fd4a10d3d8d
+run_name: RandomForest
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1755969465711
+status: 3
+tags: []
+user_id: jordi
