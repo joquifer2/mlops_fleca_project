@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Workspace/mlops_fleca_project/mlruns/203059079665072361/593a202a6bf04711ac90c90e6f2fee95/artifacts
+end_time: 1756028796350
+entry_point_name: ''
+experiment_id: '203059079665072361'
+lifecycle_stage: active
+run_id: 593a202a6bf04711ac90c90e6f2fee95
+run_name: intelligent-eel-228
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1756028795049
+status: 3
+tags: []
+user_id: jordi

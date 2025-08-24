@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Workspace/mlops_fleca_project/mlruns/203059079665072361/26f6d78a2cfb4b38a418f9123d49291b/artifacts
+end_time: 1756028859506
+entry_point_name: ''
+experiment_id: '203059079665072361'
+lifecycle_stage: active
+run_id: 26f6d78a2cfb4b38a418f9123d49291b
+run_name: classy-skink-104
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1756028858195
+status: 3
+tags: []
+user_id: jordi
