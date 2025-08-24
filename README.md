@@ -71,3 +71,11 @@ start_mlflow_server.bat
 ```
 
 Esto iniciará MLflow en [http://localhost:5000](http://localhost:5000) y podrás registrar y visualizar tus experimentos.
+
+## Inicializar el servidor de ML Flow en local
+
+.\.venv\Scripts\Activate.ps1
+.\start_mlflow_server.bat
+http://127.0.0.1:5000/#/models
+
+url docs: https://mlflow.org/docs/latest/
