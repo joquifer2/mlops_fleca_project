@@ -29,6 +29,7 @@ python-dotenv = "^1.1.1"
 confluent-kafka = "^2.11.0"
 streamlit = "^1.48.1"
 mlflow = "^3.3.1"
+dvc = "^3.62.0"
 
 [tool.poetry.group.dev.dependencies]
 # Herramientas de desarrollo
