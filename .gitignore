@@ -99,3 +99,21 @@ bin/
 
 # Entorno virtual
 .venv/
+
+# Modelos
+/models/*
+
+# El doblle asterisco (**) asegura que funcione en subcarpetas (como data/raw, data/processed)
+# Con el ! se asegura que no se ignoren los ficheros .dvc que queremos añadir.
+!/data/**/*.dvc
+# Y es importante no ignorar el propio fichero .dvc que queremos añadir
+!/data/raw.dvc
+!/data/interim.dvc
+!/models/**/*.dvc
+
+# DVC a menudo crea un .gitignore dentro de la carpeta de datos
+# Es buena practica asegurarse de quye ese fichero tampoco sea ignorado.
+
+!/data/.gitignore
+!/models/.gitignore
+/models
