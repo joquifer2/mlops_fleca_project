@@ -1,0 +1,5 @@
+outs:
+- md5: c8cb0023bc63d71d6fe8932c2cd70905
+  size: 129242
+  hash: md5
+  path: raw_data_bq_correcto_20250817.parquet
