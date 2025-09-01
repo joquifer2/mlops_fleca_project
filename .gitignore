@@ -108,6 +108,7 @@ bin/
 !/data/**/*.dvc
 # Y es importante no ignorar el propio fichero .dvc que queremos añadir
 !/data/raw.dvc
+!/data/processed/**/*.dvc
 !/data/interim.dvc
 !/models/**/*.dvc
 
@@ -117,3 +118,5 @@ bin/
 !/data/.gitignore
 !/models/.gitignore
 /models
+/test_dvc.txt
+/test_dvc.csv
