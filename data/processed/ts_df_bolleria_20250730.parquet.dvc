@@ -1,0 +1,5 @@
+outs:
+- md5: 9bc9a177e7b4232f896d56d5fd1c4949
+  size: 14484
+  hash: md5
+  path: ts_df_bolleria_20250730.parquet
