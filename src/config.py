@@ -6,6 +6,10 @@ from src.paths import ROOT_DIR
 # Cargamos las variables de entorno
 load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
+# Bloque de depuración temporal
+print("DEBUG ENV HOPSWORKS_PROJECT_NAME:", os.environ.get("HOPSWORKS_PROJECT_NAME"))
+print("DEBUG ENV PATH:", os.path.join(ROOT_DIR, ".env"))
+
 try:
     HOPSWORKS_PROJECT_NAME = os.environ["HOPSWORKS_PROJECT_NAME"]
     HOPSWORKS_API_KEY = os.environ["HOPSWORKS_API_KEY"]

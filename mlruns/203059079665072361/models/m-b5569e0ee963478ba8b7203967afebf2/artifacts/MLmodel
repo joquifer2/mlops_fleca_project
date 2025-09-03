@@ -1,0 +1,22 @@
+artifact_path: file:///c:/Workspace/mlops_fleca_project/mlruns/203059079665072361/models/m-b5569e0ee963478ba8b7203967afebf2/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.10.0
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.1
+mlflow_version: 3.3.1
+model_id: m-b5569e0ee963478ba8b7203967afebf2
+model_size_bytes: 126494
+model_uuid: m-b5569e0ee963478ba8b7203967afebf2
+prompts: null
+run_id: 6a083229d12643398a47b1e5dc117a99
+utc_time_created: '2025-09-01 10:47:30.787822'

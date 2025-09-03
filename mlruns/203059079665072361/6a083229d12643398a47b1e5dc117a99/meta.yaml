@@ -1,0 +1,14 @@
+artifact_uri: file:///c:/Workspace/mlops_fleca_project/mlruns/203059079665072361/6a083229d12643398a47b1e5dc117a99/artifacts
+end_time: 1756723652085
+entry_point_name: ''
+experiment_id: '203059079665072361'
+lifecycle_stage: active
+run_id: 6a083229d12643398a47b1e5dc117a99
+run_name: aged-skink-281
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1756723650763
+status: 3
+tags: []
+user_id: joquifer2

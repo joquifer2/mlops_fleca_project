@@ -144,19 +144,23 @@ def guardar_predicciones_en_hopsworks(feature_store, df_predicciones,
     
     def obtener_o_crear_feature_group(fs, metadata):
         """Obtiene un feature group existente o crea uno nuevo si no existe usando los metadatos"""
+        # Aseguramos que version sea entero y los metadatos correctos
+        metadata = metadata.copy()
+        if 'version' in metadata:
+            try:
+                metadata['version'] = int(float(metadata['version']))
+            except Exception:
+                raise ValueError(f"El campo 'version' debe ser convertible a entero, valor recibido: {metadata['version']}")
         try:
-            # Intentar recuperar el feature group existente
             fg = fs.get_feature_group(name=metadata['name'], version=metadata['version'])
             logger.info(f"Feature group existente: {metadata['name']} v{metadata['version']}")
         except Exception as e:
             logger.info(f"Feature group no encontrado, intentando crear uno nuevo: {str(e)}")
             try:
-                # Si no existe, crearlo usando los metadatos del diccionario
                 fg = fs.create_feature_group(**metadata)
                 logger.info(f"Feature group creado: {metadata['name']} v{metadata['version']}")
             except Exception as e:
                 logger.error(f"Error al crear feature group: {str(e)}")
-                # Intentar una última vez obtener el feature group, por si fue creado pero con un error
                 try:
                     fg = fs.get_feature_group(name=metadata['name'], version=metadata['version'])
                     logger.info(f"Feature group encontrado después del error: {metadata['name']} v{metadata['version']}")
@@ -167,23 +171,25 @@ def guardar_predicciones_en_hopsworks(feature_store, df_predicciones,
     
     def obtener_o_crear_feature_view(fs, fg, metadata):
         """Obtiene un feature view existente o crea uno nuevo si no existe usando los metadatos"""
+        metadata = metadata.copy()
+        if 'version' in metadata:
+            try:
+                metadata['version'] = int(float(metadata['version']))
+            except Exception:
+                raise ValueError(f"El campo 'version' debe ser convertible a entero, valor recibido: {metadata['version']}")
         try:
-            # Intentar recuperar el feature view existente
             fv = fs.get_feature_view(name=metadata['name'], version=metadata['version'])
             logger.info(f"Feature view existente: {metadata['name']} v{metadata['version']}")
         except Exception as e:
             logger.info(f"Feature view no encontrado, intentando crear uno nuevo: {str(e)}")
             try:
-                # Si no existe, crearlo basado en el feature group
                 query = fg.select_all()
-                # Crear copia del diccionario y agregar la query
                 metadata_copy = metadata.copy()
                 metadata_copy['query'] = query
                 fv = fs.create_feature_view(**metadata_copy)
                 logger.info(f"Feature view creado: {metadata['name']} v{metadata['version']}")
             except Exception as e:
                 logger.error(f"Error al crear feature view: {str(e)}")
-                # Intentar una última vez obtener el feature view, por si fue creado pero con un error
                 try:
                     fv = fs.get_feature_view(name=metadata['name'], version=metadata['version'])
                     logger.info(f"Feature view encontrado después del error: {metadata['name']} v{metadata['version']}")
