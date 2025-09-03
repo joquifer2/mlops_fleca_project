@@ -124,11 +124,36 @@ with st.spinner('Realizando predicción...'):
     })
 
 
+
 # -------------------------
-# PASO 5: Guardar predicción en Hopsworks
+# PASO 5: Guardar predicción en Hopsworks (bajo petición)
 # -------------------------
-with st.spinner('Guardando predicciones en Hopsworks...'):
-    # Guardamos la predicción en el Feature Group de Hopsworks para su registro y análisis
-    guardar_predicciones_en_hopsworks(feature_store, df_pred)
-    st.sidebar.write("Paso 5. Predicciones guardadas en Hopsworks.")
+guardar = st.sidebar.checkbox("¿Guardar predicción en Hopsworks?", value=False)
+if guardar:
+    with st.spinner('Guardando predicciones en Hopsworks...'):
+        guardar_predicciones_en_hopsworks(feature_store, df_pred)
+        st.sidebar.write("Paso 5. Predicciones guardadas en Hopsworks.")
+        progress_bar.progress(5 / N_STEPS)
+else:
+    st.sidebar.write("Paso 5. Predicción NO guardada en Hopsworks.")
     progress_bar.progress(5 / N_STEPS)
+
+
+# -------------------------
+# PASO 6: Visualizar gráfico de histórico y predicción
+# -------------------------
+
+# Importar función para obtener predicciones guardadas
+from src.inference import visualizar_historico_predicciones, obtener_predicciones_feature_view
+
+with st.spinner('Visualizando gráfico de histórico y predicción...'):
+    # Obtener todas las predicciones guardadas en Hopsworks (feature view de predicciones)
+    df_predicciones = obtener_predicciones_feature_view(
+        feature_store,
+        metadata=config.PRED_FEATURE_VIEW_METADATA
+    )
+    fig = visualizar_historico_predicciones(df, df_predicciones, columna_target='target')
+    st.plotly_chart(fig, use_container_width=True)
+    st.sidebar.write("Paso 6. Gráfico interactivo mostrado.")
+
+
