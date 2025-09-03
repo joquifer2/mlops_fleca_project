@@ -128,15 +128,29 @@ with st.spinner('Realizando predicción...'):
 # -------------------------
 # PASO 5: Guardar predicción en Hopsworks (bajo petición)
 # -------------------------
-guardar = st.sidebar.checkbox("¿Guardar predicción en Hopsworks?", value=False)
-if guardar:
+
+# Selector para guardar predicción y mostrar gráfico
+
+opciones = ["Guardar predicción en Hopsworks y mostrar gráfico", "Solo mostrar gráfico (no guardar)"]
+accion = st.sidebar.radio(
+    "¿Qué quieres hacer en el paso 5?",
+    opciones,
+    index=None
+)
+
+if accion is None:
+    st.sidebar.warning("Selecciona una opción para continuar con el proceso.")
+    mostrar_grafico = False
+elif accion == opciones[0]:
     with st.spinner('Guardando predicciones en Hopsworks...'):
         guardar_predicciones_en_hopsworks(feature_store, df_pred)
         st.sidebar.write("Paso 5. Predicciones guardadas en Hopsworks.")
         progress_bar.progress(5 / N_STEPS)
-else:
+    mostrar_grafico = True
+elif accion == opciones[1]:
     st.sidebar.write("Paso 5. Predicción NO guardada en Hopsworks.")
     progress_bar.progress(5 / N_STEPS)
+    mostrar_grafico = True
 
 
 # -------------------------
@@ -146,14 +160,16 @@ else:
 # Importar función para obtener predicciones guardadas
 from src.inference import visualizar_historico_predicciones, obtener_predicciones_feature_view
 
-with st.spinner('Visualizando gráfico de histórico y predicción...'):
-    # Obtener todas las predicciones guardadas en Hopsworks (feature view de predicciones)
-    df_predicciones = obtener_predicciones_feature_view(
-        feature_store,
-        metadata=config.PRED_FEATURE_VIEW_METADATA
-    )
-    fig = visualizar_historico_predicciones(df, df_predicciones, columna_target='target')
-    st.plotly_chart(fig, use_container_width=True)
-    st.sidebar.write("Paso 6. Gráfico interactivo mostrado.")
+
+# Paso 6 solo se ejecuta si el usuario lo decide en el selector
+if mostrar_grafico:
+    with st.spinner('Visualizando gráfico de histórico y predicción...'):
+        df_predicciones = obtener_predicciones_feature_view(
+            feature_store,
+            metadata=config.PRED_FEATURE_VIEW_METADATA
+        )
+        fig = visualizar_historico_predicciones(df, df_predicciones, columna_target='target')
+        st.plotly_chart(fig, use_container_width=True)
+        st.sidebar.write("Paso 6. Gráfico interactivo mostrado.")
 
 
