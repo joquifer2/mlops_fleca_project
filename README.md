@@ -83,3 +83,10 @@ url docs: https://mlflow.org/docs/latest/
 
 # Comando para crear el requirements.txt con poetry, necesario para streamlit
 poetry export --without-hashes -f requirements.txt -o requirements.txt
+
+
+# Para ejecutar la api
+uvicorn api.main:app --reload
+
+# Para verlo
+http://127.0.0.1:8000/docs

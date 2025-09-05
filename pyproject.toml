@@ -32,6 +32,8 @@ mlflow = "^3.3.1"
 dvc = "^3.62.0"
 dagshub = "^0.6.3"
 shap = "^0.48.0"
+fastapi = "^0.116.1"
+uvicorn = "^0.35.0"
 
 [tool.poetry.group.dev.dependencies]
 # Herramientas de desarrollo

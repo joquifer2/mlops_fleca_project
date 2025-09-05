@@ -82,8 +82,8 @@ sys.path.append(str(Path().resolve().parent / 'src'))
 import src.config as config 
 from pathlib import Path
 from src.model import transformar_features_target
-from config import COLUMNA_TARGET, COLS_EXOGENAS, PERIODOS_ADELANTE, ELIMINAR_NULOS
-from config import PRED_FEATURE_GROUP_METADATA, PRED_FEATURE_VIEW_METADATA
+from src.config import COLUMNA_TARGET, COLS_EXOGENAS, PERIODOS_ADELANTE, ELIMINAR_NULOS
+from src.config import PRED_FEATURE_GROUP_METADATA, PRED_FEATURE_VIEW_METADATA
 
 # Configuración básica de logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -114,8 +114,7 @@ def cargar_y_transformar_feature_view(feature_store, modelo, columna_target, col
                                  periodos_adelante=1, eliminar_nulos=True, metadata=None, name=None, version=None):
     """
     Carga una feature view, ordena por la columna de fecha, transforma las features y añade el target.
-    Los lags se extraen automáticamente de las features del modelo.
-    Retorna el DataFrame procesado y el DataFrame de features sin 'week_start' ni 'target'.
+    Si modelo es None, devuelve el DataFrame histórico completo y None para features.
     
     Args:
         feature_store: Feature store de Hopsworks
@@ -138,6 +137,11 @@ def cargar_y_transformar_feature_view(feature_store, modelo, columna_target, col
     fv = feature_store.get_feature_view(name=name, version=version)
     df = fv.get_batch_data()
     df = df.sort_values('week_start').reset_index(drop=True)
+
+    # Si no se pasa modelo, solo devolvemos el histórico completo
+    if modelo is None:
+        return df, None
+    
     # Extraer lags del modelo (nombres de columnas que contienen 'lag')
     lags_list = [int(col.split('lag')[-1]) for col in modelo.feature_names_in_ if 'lag' in col]
     print(f"Lags detectados en el modelo: {lags_list}")

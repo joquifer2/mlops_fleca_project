@@ -13,7 +13,7 @@ class PredictionRequest(BaseModel):
     Modelo de datos para la solicitud de predicción.
     Actualmente no se requieren parámetros en la solicitud.
     """
-    timestamp: str  # formato ISO, e.g., "2023-10-01T00:00:00"
+    timestamp: str  # formato ISO, e.g., "2023-10-01T00:00:00Z"
 
 
 # Define un modelo para la predicción
