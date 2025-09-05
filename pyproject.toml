@@ -31,6 +31,7 @@ streamlit = "^1.48.1"
 mlflow = "^3.3.1"
 dvc = "^3.62.0"
 dagshub = "^0.6.3"
+shap = "^0.48.0"
 
 [tool.poetry.group.dev.dependencies]
 # Herramientas de desarrollo

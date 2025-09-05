@@ -79,3 +79,7 @@ Esto iniciará MLflow en [http://localhost:5000](http://localhost:5000) y podrá
 http://127.0.0.1:5000/#/models
 
 url docs: https://mlflow.org/docs/latest/
+
+
+# Comando para crear el requirements.txt con poetry, necesario para streamlit
+poetry export --without-hashes -f requirements.txt -o requirements.txt
