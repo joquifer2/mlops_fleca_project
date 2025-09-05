@@ -1,70 +1,6 @@
 # -------------------------
-# OBTENER PREDICCIONES DESDE FEATURE VIEW DE HOPSWORKS
+# LIBRERÍAS Y CONFIGURACIÓN INICIAL
 # -------------------------
-def obtener_predicciones_feature_view(feature_store, metadata=None, name=None, version=None):
-    """
-    Obtiene el DataFrame de la feature view de predicciones desde Hopsworks.
-    Args:
-        feature_store: objeto feature_store de Hopsworks
-        metadata: diccionario con metadatos (opcional)
-        name: nombre de la feature view (opcional)
-        version: versión de la feature view (opcional)
-    Returns:
-        DataFrame con las predicciones
-    """
-    if metadata is not None:
-        name = metadata.get('name')
-        version = metadata.get('version')
-    elif name is None or version is None:
-        raise ValueError("Debe proporcionar metadata o name y version")
-    fv = feature_store.get_feature_view(name=name, version=version)
-    df_predicciones = fv.get_batch_data()
-    df_predicciones = df_predicciones.sort_values('week_start').reset_index(drop=True)
-    return df_predicciones
-# -------------------------
-# VISUALIZACIÓN DE HISTÓRICO Y PREDICCIÓN
-# -------------------------
-def visualizar_historico_predicciones(df_historico, df_prediccion, columna_target='base_imponible', columna_fecha='week_start', ax=None):
-    """
-    Grafica los valores históricos y todas las predicciones en un gráfico interactivo Plotly.
-    Args:
-        df_historico: DataFrame con los datos históricos (debe incluir columna de fecha y target)
-        df_prediccion: DataFrame con las predicciones (puede incluir varias fechas y valores)
-        columna_target: Nombre de la columna objetivo en el histórico
-        columna_fecha: Nombre de la columna de fechas
-    Returns:
-        fig: objeto Plotly Figure
-    """
-    import plotly.graph_objects as go
-    fig = go.Figure()
-    # Histórico
-    fig.add_trace(go.Scatter(
-        x=df_historico[columna_fecha],
-        y=df_historico[columna_target],
-        mode='lines+markers',
-        name='Histórico',
-        hovertemplate='Fecha: %{x}<br>Histórico: %{y}<extra></extra>'
-    ))
-    # Predicciones (pueden ser varias)
-    fig.add_trace(go.Scatter(
-        x=df_prediccion[columna_fecha],
-        y=df_prediccion['predicted_base_imponible'],
-        mode='lines+markers',
-        name='Predicción',
-        line=dict(color='red', dash='dash'),
-        marker=dict(symbol='x', size=10),
-        hovertemplate='Fecha: %{x}<br>Predicción: %{y}<extra></extra>'
-    ))
-    fig.update_layout(
-        title='Histórico y Predicciones de Ventas de Bollería',
-        xaxis_title='Fecha',
-        yaxis_title='Base Imponible',
-        legend=dict(x=0, y=1),
-        hovermode='x unified',
-        template='plotly_white',
-        margin=dict(l=40, r=40, t=60, b=40)
-    )
-    return fig
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
@@ -74,7 +10,7 @@ import logging
 from hsfs.feature_group import FeatureGroup
 from hsfs.feature_view import FeatureView
 
-# Añade src al path para importar los módulos
+# Añade src al path para importar los módulos propios
 import sys
 from pathlib import Path
 sys.path.append(str(Path().resolve().parent / 'src'))
@@ -89,7 +25,9 @@ from src.config import PRED_FEATURE_GROUP_METADATA, PRED_FEATURE_VIEW_METADATA
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('inference')
 
-# Nota sobre el enfoque de metadatos:
+# -------------------------
+# NOTA SOBRE METADATOS Y ENFOQUE
+# -------------------------
 # En esta implementación usamos diccionarios de metadatos definidos en config.py para
 # configurar los feature groups y feature views. Este enfoque tiene varias ventajas:
 # 1. Mayor mantenibilidad: Todos los parámetros están centralizados
@@ -97,8 +35,9 @@ logger = logging.getLogger('inference')
 # 3. Mejor legibilidad: Los parámetros tienen nombres descriptivos en el diccionario
 # 4. Reutilización: Podemos usar los mismos metadatos en diferentes partes del código
 
-
-
+# -------------------------
+# CONEXIÓN Y ACCESO A HOPSWORKS
+# -------------------------
 def conectar_hopsworks_feature_store():
     """
     Conecta con Hopsworks y retorna el proyecto y el feature store usando las credenciales de config.py
@@ -110,6 +49,9 @@ def conectar_hopsworks_feature_store():
     feature_store = project.get_feature_store()
     return project, feature_store
 
+# -------------------------
+# CARGA Y TRANSFORMACIÓN DE DATOS DESDE FEATURE VIEW
+# -------------------------
 def cargar_y_transformar_feature_view(feature_store, modelo, columna_target, cols_exogenas, 
                                  periodos_adelante=1, eliminar_nulos=True, metadata=None, name=None, version=None):
     """
@@ -161,6 +103,9 @@ def cargar_y_transformar_feature_view(feature_store, modelo, columna_target, col
         features = features.drop(columns=['target'])
     return df, features
 
+# -------------------------
+# CARGA DE MODELO DESDE EL REGISTRY
+# -------------------------
 def cargar_modelo_desde_registry(project, name, version, model_file):
     """
     Carga un modelo desde el model registry de Hopsworks.
@@ -172,6 +117,9 @@ def cargar_modelo_desde_registry(project, name, version, model_file):
     model = joblib.load(Path(model_dir) / model_file)
     return model
 
+# -------------------------
+# PREDICCIÓN
+# -------------------------
 def predecir(model, features, solo_ultima=True):
     """
     Realiza la predicción usando el modelo y el DataFrame de features.
@@ -182,6 +130,9 @@ def predecir(model, features, solo_ultima=True):
     pred = model.predict(features)
     return pred
 
+# -------------------------
+# GUARDADO DE PREDICCIONES EN HOPSWORKS
+# -------------------------
 def guardar_predicciones_en_hopsworks(feature_store, df_predicciones, 
                               fg_metadata=None, fv_metadata=None):
     """
@@ -293,6 +244,78 @@ def guardar_predicciones_en_hopsworks(feature_store, df_predicciones,
     
     return fg_pred, fv_pred
 
+# -------------------------
+# OBTENER PREDICCIONES DESDE FEATURE VIEW DE HOPSWORKS
+# -------------------------
+def obtener_predicciones_feature_view(feature_store, metadata=None, name=None, version=None):
+    """
+    Obtiene el DataFrame de la feature view de predicciones desde Hopsworks.
+    Args:
+        feature_store: objeto feature_store de Hopsworks
+        metadata: diccionario con metadatos (opcional)
+        name: nombre de la feature view (opcional)
+        version: versión de la feature view (opcional)
+    Returns:
+        DataFrame con las predicciones
+    """
+    if metadata is not None:
+        name = metadata.get('name')
+        version = metadata.get('version')
+    elif name is None or version is None:
+        raise ValueError("Debe proporcionar metadata o name y version")
+    fv = feature_store.get_feature_view(name=name, version=version)
+    df_predicciones = fv.get_batch_data()
+    df_predicciones = df_predicciones.sort_values('week_start').reset_index(drop=True)
+    return df_predicciones
+
+# -------------------------
+# VISUALIZACIÓN DE HISTÓRICO Y PREDICCIÓN
+# -------------------------
+def visualizar_historico_predicciones(df_historico, df_prediccion, columna_target='base_imponible', columna_fecha='week_start', ax=None):
+    """
+    Grafica los valores históricos y todas las predicciones en un gráfico interactivo Plotly.
+    Args:
+        df_historico: DataFrame con los datos históricos (debe incluir columna de fecha y target)
+        df_prediccion: DataFrame con las predicciones (puede incluir varias fechas y valores)
+        columna_target: Nombre de la columna objetivo en el histórico
+        columna_fecha: Nombre de la columna de fechas
+    Returns:
+        fig: objeto Plotly Figure
+    """
+    import plotly.graph_objects as go
+    fig = go.Figure()
+    # Histórico
+    fig.add_trace(go.Scatter(
+        x=df_historico[columna_fecha],
+        y=df_historico[columna_target],
+        mode='lines+markers',
+        name='Histórico',
+        hovertemplate='Fecha: %{x}<br>Histórico: %{y}<extra></extra>'
+    ))
+    # Predicciones (pueden ser varias)
+    fig.add_trace(go.Scatter(
+        x=df_prediccion[columna_fecha],
+        y=df_prediccion['predicted_base_imponible'],
+        mode='lines+markers',
+        name='Predicción',
+        line=dict(color='red', dash='dash'),
+        marker=dict(symbol='x', size=10),
+        hovertemplate='Fecha: %{x}<br>Predicción: %{y}<extra></extra>'
+    ))
+    fig.update_layout(
+        title='Histórico y Predicciones de Ventas de Bollería',
+        xaxis_title='Fecha',
+        yaxis_title='Base Imponible',
+        legend=dict(x=0, y=1),
+        hovermode='x unified',
+        template='plotly_white',
+        margin=dict(l=40, r=40, t=60, b=40)
+    )
+    return fig
+
+# -------------------------
+# BLOQUE PRINCIPAL DE EJEMPLO Y TEST
+# -------------------------
 if __name__ == "__main__":
 
     project, feature_store = conectar_hopsworks_feature_store()

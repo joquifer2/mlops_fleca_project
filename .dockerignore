@@ -1,0 +1,19 @@
+# Archivos y carpetas a ignorar en el contexto de Docker
+.dockerignore
+.dvc/
+.env
+.git/
+.github/
+.venv/
+.vscode/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+*.mlruns
+mlartifacts/
+mlruns/
+# ¡NO ignores .gitignore ni README.md!
