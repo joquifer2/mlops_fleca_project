@@ -48,11 +48,11 @@ jobs:
           HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
           HOPSWORKS_PROJECT_NAME: ${{ secrets.HOPSWORKS_PROJECT_NAME }}
         run: |
-          poetry run jupyter nbconvert --to notebook --execute notebooks/13_feature_pipeline.ipynb --inplace
+          poetry run jupyter nbconvert --to notebook --execute notebooks/13_feature_pipeline_last_week.ipynb --inplace
 
       # 7. (opcional) Subir el notebook ejecutado como artefacto para poder revisarlo
       - name: Upload executed notebook
         uses: actions/upload-artifact@v4
         with:
           name: executed-feature-pipeline-notebook
-          path: notebooks/13_feature_pipeline.ipynb
+          path: notebooks/13_feature_pipeline_last_week.ipynb
