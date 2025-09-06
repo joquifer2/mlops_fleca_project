@@ -340,7 +340,7 @@ def load_raw_data(
     parquet_path=None,
     fecha_inicio=None,
     fecha_fin=None,
-    descargar_bq=False
+    descargar_bq=True
 ):
     """
     Descarga, carga y valida los datos raw antes de la agregación semanal.
