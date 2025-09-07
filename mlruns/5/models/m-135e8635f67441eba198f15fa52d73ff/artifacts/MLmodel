@@ -1,0 +1,22 @@
+artifact_path: file:///C:/Workspace/mlops_fleca_project/mlruns/5/models/m-135e8635f67441eba198f15fa52d73ff/artifacts
+flavors:
+  python_function:
+    data: model.xgb
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.xgboost
+    python_version: 3.11.0
+  xgboost:
+    code: null
+    data: model.xgb
+    model_class: xgboost.sklearn.XGBRegressor
+    model_format: xgb
+    xgb_version: 3.0.3
+mlflow_version: 3.3.1
+model_id: m-135e8635f67441eba198f15fa52d73ff
+model_size_bytes: 192528
+model_uuid: m-135e8635f67441eba198f15fa52d73ff
+prompts: null
+run_id: 8e6d0cd4413847cc8d2c2568c3612c72
+utc_time_created: '2025-09-06 18:15:03.620946'
