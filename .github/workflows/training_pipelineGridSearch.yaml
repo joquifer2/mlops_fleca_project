@@ -1,0 +1,51 @@
+
+name: Fleca MLOps Training Pipeline GridSearch
+
+on:
+  schedule:
+    - cron: '10 18 * * 2'  # Cada martes a las 18:10 (UTC)
+  workflow_dispatch:
+
+jobs:
+  training_pipeline_gridsearch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+
+      - name: Install Poetry manually
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+
+      - name: Install project dependencies
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry install --no-interaction --no-ansi
+
+      - name: Write Google credentials to file
+        run: |
+          cat <<EOF > /tmp/credentials.json
+          ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          EOF
+
+      - name: Set GOOGLE_APPLICATION_CREDENTIALS env
+        run: echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/credentials.json" >> $GITHUB_ENV
+
+      - name: Run training pipeline GridSearch notebook
+        env:
+          HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+          HOPSWORKS_PROJECT_NAME: ${{ secrets.HOPSWORKS_PROJECT_NAME }}
+        run: |
+          poetry run jupyter nbconvert --to notebook --execute notebooks/14_training_pipeline_GridSearch.ipynb --inplace
+
+      - name: Upload executed notebook
+        uses: actions/upload-artifact@v4
+        with:
+          name: executed-training-pipeline-gridsearch-notebook
+          path: notebooks/14_training_pipeline_GridSearch.ipynb
