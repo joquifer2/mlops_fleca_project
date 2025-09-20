@@ -19,7 +19,11 @@ import matplotlib.pyplot as plt
 # Añade src al path para importar los módulos propios
 import sys
 from pathlib import Path
-sys.path.append(str(Path().resolve().parent / 'src'))
+# sys.path.append(str(Path().resolve().parent / 'src'))
+# Ruta absoluta del directorio raíz del proyecto (un nivel arriba de src)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 # Importación de funciones principales del pipeline
