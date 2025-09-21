@@ -1,8 +1,10 @@
 import requests
 import pandas as pd
+import os
 
 # API_URL = "http://127.0.0.1:8000/predict"  # Puedes parametrizar esto si lo necesitas
-API_URL = "http://fastapi:8000/predict"  # Usar el nombre del servicio Docker
+DEFAULT_API_URL = "http://fastapi:8000/predict"  # Usar el nombre del servicio Docker
+API_URL = os.getenv("API_URL", DEFAULT_API_URL)
 
 def llamar_api_prediccion(timestamp, api_url=API_URL):
     """

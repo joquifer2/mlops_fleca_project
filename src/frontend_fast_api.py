@@ -1,18 +1,14 @@
 # -------------------------
 # CONFIGURACIÓN INICIAL Y LIBRERÍAS
 # -------------------------
+
+
+import os
 import streamlit as st
 from datetime import datetime
 import pandas as pd
 from src.api_client import llamar_api_prediccion
-from src.inference import (
-    conectar_hopsworks_feature_store,
-    guardar_predicciones_en_hopsworks,
-    visualizar_historico_predicciones,
-    obtener_predicciones_feature_view,
-    cargar_y_transformar_feature_view
-)
-import src.config as config
+
 
 # -------------------------
 # CONFIGURACIÓN DE LA INTERFAZ STREAMLIT
@@ -22,6 +18,10 @@ st.set_page_config(layout="wide")
 
 st.title('Predicción semanal de ventas de bollería')
 st.header('by Jordi Quiroga')
+
+
+# Debug opcional: ver qué API_URL está leyendo la UI
+st.caption(f"API_URL = {os.getenv('API_URL', '(sin definir; usando fallback)')}")
 
 progress_bar = st.sidebar.header('Progreso')
 progress_bar = st.sidebar.progress(0)
@@ -50,18 +50,32 @@ with st.spinner('Obteniendo predicción desde la API...'):
 # PASO 2: Guardar predicción en Hopsworks y mostrar gráfico
 # -------------------------
 opciones = ["Guardar predicción en Hopsworks y mostrar gráfico", "Solo mostrar gráfico (no guardar)"]
-accion = st.sidebar.radio(
-    "¿Qué quieres hacer en el paso 2?",
-    opciones,
-    index=None
-)
+accion = st.sidebar.radio("¿Qué quieres hacer en el paso 2?", opciones, index=None)
 
 feature_store = None
+mostrar_grafico = False
+
 if accion is None:
     st.sidebar.warning("Selecciona una opción para continuar con el proceso.")
-    mostrar_grafico = False
 else:
-    # Conectar a Hopsworks solo si se va a guardar o visualizar
+    # 👉 Importar Hopsworks SOLO si se va a usar
+    try:
+        import src.config as config
+        from src.inference import (
+            conectar_hopsworks_feature_store,
+            guardar_predicciones_en_hopsworks,
+            visualizar_historico_predicciones,
+            obtener_predicciones_feature_view,
+            cargar_y_transformar_feature_view
+        )
+    except Exception as e:
+        st.error(
+            "La UI no tiene configuradas las credenciales de Hopsworks o falta configuración.\n\n"
+            f"Detalle: {e}\n\n"
+            "Soluciones: añade HOPSWORKS_* en este servicio o mueve toda la lógica de Hopsworks a la API."
+        )
+        st.stop()
+
     with st.spinner('Conectando con Hopsworks para operaciones de guardado/visualización...'):
         _, feature_store = conectar_hopsworks_feature_store()
 
@@ -77,28 +91,26 @@ else:
         mostrar_grafico = True
 
 # -------------------------
-# VISUALIZACIÓN: Histórico y predicción
+# VISUALIZACIÓN
 # -------------------------
-# Solo se ejecuta si el usuario lo decide en el selector y hay conexión a Hopsworks
 if mostrar_grafico and feature_store is not None:
     with st.spinner('Visualizando gráfico de histórico y predicción...'):
-        # Cargar histórico real desde Hopsworks
         df_historico, _ = cargar_y_transformar_feature_view(
             feature_store,
-            modelo=None,  # Solo visualización, no requiere modelo
+            modelo=None,
             columna_target=config.COLUMNA_TARGET,
             cols_exogenas=config.COLS_EXOGENAS,
             periodos_adelante=config.PERIODOS_ADELANTE,
             eliminar_nulos=config.ELIMINAR_NULOS,
             metadata=config.HISTORICAL_FEATURE_VIEW_METADATA
         )
-        # Cargar predicciones guardadas
         df_predicciones = obtener_predicciones_feature_view(
             feature_store,
             metadata=config.PRED_FEATURE_VIEW_METADATA
         )
-        # Visualizar ambos en el gráfico interactivo
-        fig = visualizar_historico_predicciones(df_historico, df_predicciones, columna_target='base_imponible')
+        fig = visualizar_historico_predicciones(
+            df_historico, df_predicciones, columna_target='base_imponible'
+        )
         st.plotly_chart(fig, use_container_width=True)
         st.sidebar.write("Paso 2. Gráfico interactivo mostrado.")
 
