@@ -75,21 +75,20 @@ def cargar_y_transformar_feature_view(feature_store, modelo, columna_target, col
         version = metadata.get('version')
     elif name is None or version is None:
         raise ValueError("Debe proporcionar metadata o name y version")
-    
+
     fv = feature_store.get_feature_view(name=name, version=version)
-    df = fv.get_batch_data()
-    df = df.sort_values('week_start').reset_index(drop=True)
+    df_original = fv.get_batch_data().sort_values('week_start').reset_index(drop=True)
 
     # Si no se pasa modelo, solo devolvemos el histórico completo
     if modelo is None:
-        return df, None
-    
+        return df_original, None, None
+
     # Extraer lags del modelo (nombres de columnas que contienen 'lag')
     lags_list = [int(col.split('lag')[-1]) for col in modelo.feature_names_in_ if 'lag' in col]
     print(f"Lags detectados en el modelo: {lags_list}")
-    
+
     df = transformar_features_target(
-        df,
+        df_original,
         lags_list=lags_list,
         columna_target=columna_target,
         cols_exogenas=cols_exogenas,
@@ -101,7 +100,7 @@ def cargar_y_transformar_feature_view(feature_store, modelo, columna_target, col
     features = df.drop(columns=['week_start'])
     if 'target' in features.columns:
         features = features.drop(columns=['target'])
-    return df, features
+    return df_original, df, features
 
 # -------------------------
 # CARGA DE MODELO DESDE EL REGISTRY
@@ -192,7 +191,10 @@ def guardar_predicciones_en_hopsworks(feature_store, df_predicciones,
         return fg
     
     def obtener_o_crear_feature_view(fs, fg, metadata):
-        """Obtiene un feature view existente o crea uno nuevo si no existe usando los metadatos"""
+        """
+        Obtiene un feature view existente o crea uno nuevo si no existe. Si existe, verifica que la consulta sea select_all().
+        Si la consulta no es select_all(), lo recrea para asegurar que siempre esté actualizado.
+        """
         metadata = metadata.copy()
         if 'version' in metadata:
             try:
@@ -201,7 +203,19 @@ def guardar_predicciones_en_hopsworks(feature_store, df_predicciones,
                 raise ValueError(f"El campo 'version' debe ser convertible a entero, valor recibido: {metadata['version']}")
         try:
             fv = fs.get_feature_view(name=metadata['name'], version=metadata['version'])
-            logger.info(f"Feature view existente: {metadata['name']} v{metadata['version']}")
+            # Verificar si la consulta es select_all()
+            query_actual = getattr(fv, 'query', None)
+            query_select_all = fg.select_all()
+            # Si la consulta no es select_all(), recrear el feature view
+            if query_actual is not None and str(query_actual) != str(query_select_all):
+                logger.info(f"La consulta del feature view no es select_all(). Se recrea el feature view.")
+                fv.delete()
+                metadata_copy = metadata.copy()
+                metadata_copy['query'] = query_select_all
+                fv = fs.create_feature_view(**metadata_copy)
+                logger.info(f"Feature view recreado: {metadata['name']} v{metadata['version']}")
+            else:
+                logger.info(f"Feature view existente y actualizado: {metadata['name']} v{metadata['version']}")
         except Exception as e:
             logger.info(f"Feature view no encontrado, intentando crear uno nuevo: {str(e)}")
             try:
@@ -332,42 +346,47 @@ if __name__ == "__main__":
     )
     print("Modelo cargado correctamente.")
 
-    # Ejemplo de uso de cargar_y_transformar_feature_view con metadatos
-    df, features = cargar_y_transformar_feature_view(
-        feature_store=feature_store,
-        modelo=modelo,
-        columna_target=COLUMNA_TARGET,
-        cols_exogenas=COLS_EXOGENAS,
-        periodos_adelante=PERIODOS_ADELANTE,
-        eliminar_nulos=ELIMINAR_NULOS,
-        metadata=config.HISTORICAL_FEATURE_VIEW_METADATA
-    )
-    print("DataFrame transformado (primeras filas):")
-    print(df.head())
-    print("Features para el modelo (primeras filas):")
-    print(features.head())
+    # 1. Cargar el histórico original (sin transformar)
+    fv = feature_store.get_feature_view(name=config.HISTORICAL_FEATURE_VIEW_METADATA['name'], version=config.HISTORICAL_FEATURE_VIEW_METADATA['version'])
+    df_historico = fv.get_batch_data().sort_values('week_start').reset_index(drop=True)
+    print("Histórico original (últimas filas):")
+    print(df_historico.tail())
+    ultima_semana_real = df_historico['week_start'].max()
+    print(f"Última semana real disponible en el histórico: {ultima_semana_real}")
 
-    # Filtrar las columnas de features para que coincidan con las del modelo
-    features = features[modelo.feature_names_in_]
+    # 2. Generar los features para la semana futura (15/09/2025)
+    fecha_futura = ultima_semana_real + timedelta(days=7)
+    print(f"Generando features para la semana: {fecha_futura}")
 
-    # Realizar la predicción para la próxima semana
-    resultado = predecir(modelo, features, solo_ultima=True)
-    
-    # Obtener la fecha de la última semana de datos
-    ultimo_lunes = df.iloc[-1]['week_start']
-    fecha_siguiente = ultimo_lunes + timedelta(days=7)
-    
-    print("Predicción próxima semana:")
-    print(f"Fecha: {df.iloc[-1]['week_start']}")
-    print(f"Predicción base_imponible: {resultado[0]:.2f}")
-    
-    # Crear DataFrame con la predicción
+    # Obtener los valores de lags usando las semanas correctas
+    nueva_fila = {}
+    for lag in [int(col.split('lag')[-1]) for col in modelo.feature_names_in_ if 'lag' in col]:
+        semana_lag = fecha_futura - timedelta(days=7*lag)
+        valor_lag = df_historico.loc[df_historico['week_start'] == semana_lag, COLUMNA_TARGET].values
+        nueva_fila[f'{COLUMNA_TARGET}_lag{lag}'] = valor_lag[0] if len(valor_lag) > 0 else np.nan
+    # Añadir exógenas (usamos el valor más reciente)
+    for col in COLS_EXOGENAS:
+        nueva_fila[col] = df_historico[col].iloc[-1] if col in df_historico.columns else np.nan
+    nueva_fila['week_start'] = fecha_futura
+
+    # Convertir a DataFrame y reordenar columnas
+    df_features_futuro = pd.DataFrame([nueva_fila])[list(modelo.feature_names_in_) + ['week_start']]
+
+    print("Features generados para la semana futura:")
+    print(df_features_futuro)
+
+    # 3. Realizar la predicción sobre la semana futura
+    resultado = predecir(modelo, df_features_futuro[modelo.feature_names_in_], solo_ultima=False)
+
+    print(f"Predicción para la semana {fecha_futura.date()}: {resultado[0]:.2f}")
+
+    # 4. Crear DataFrame con la predicción
     df_predicciones = pd.DataFrame({
-        'week_start': [fecha_siguiente],
+        'week_start': [fecha_futura],
         'predicted_base_imponible': [resultado[0]]
     })
-    
-    # Guardar la predicción en Hopsworks usando los metadatos
+
+    # 5. Guardar la predicción en Hopsworks usando los metadatos
     print("\nGuardando predicción en Hopsworks...")
     fg_pred, fv_pred = guardar_predicciones_en_hopsworks(
         feature_store=feature_store,
@@ -375,16 +394,16 @@ if __name__ == "__main__":
         fg_metadata=config.PRED_FEATURE_GROUP_METADATA,
         fv_metadata=config.PRED_FEATURE_VIEW_METADATA
     )
-    
+
     if fg_pred is not None:
         print(f"✅ Predicción guardada en Feature Group: {fg_pred.name} (v{fg_pred.version})")
-    
+
     if fv_pred is not None:
         print(f"✅ Feature View disponible: {fv_pred.name} (v{fv_pred.version})")
 
-    # Resumen de la ejecución
+    # 6. Resumen de la ejecución
     print("\n=== Resumen de Ejecución ===")
-    print(f"• Fecha de predicción: {fecha_siguiente}")
+    print(f"• Fecha de predicción: {fecha_futura}")
     print(f"• Valor predicho: {resultado[0]:.2f}")
     print(f"• Feature Group: {config.PRED_FEATURE_GROUP_METADATA['name']} (v{config.PRED_FEATURE_GROUP_METADATA['version']})")
     print(f"• Feature View: {config.PRED_FEATURE_VIEW_METADATA['name']} (v{config.PRED_FEATURE_VIEW_METADATA['version']})")
