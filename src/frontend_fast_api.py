@@ -36,6 +36,8 @@ with st.spinner('Obteniendo predicción desde la API...'):
     st.sidebar.write("Paso 1. Predicción obtenida desde la API.")
     progress_bar.progress(1 / N_STEPS)
 
+    # Debug: mostrar la respuesta cruda de la API
+    st.write('DEBUG respuesta API:', resultado_api)
     st.subheader('Predicción próxima semana:')
     st.write(f"Fecha de la predicción: {resultado_api['week_start'][0]}")
     st.write(f"Valor predicho: {resultado_api['prediction'][0]:.2f}")
