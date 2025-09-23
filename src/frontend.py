@@ -32,7 +32,9 @@ from src.inference import (
     cargar_y_transformar_feature_view,
     cargar_modelo_desde_registry,
     predecir,
-    guardar_predicciones_en_hopsworks
+    guardar_predicciones_en_hopsworks,
+    visualizar_historico_predicciones,
+    obtener_predicciones_feature_view
 )
 from src.paths import ROOT_DIR
 import src.config as config
@@ -88,7 +90,7 @@ with st.spinner('Cargando modelo desde el Model Registry...'):
 # PASO 3: Cargar y transformar datos desde Feature View
 # -------------------------
 with st.spinner('Datos cargados y transformados...'):
-    df, features = cargar_y_transformar_feature_view(
+    _, df, features = cargar_y_transformar_feature_view(
         feature_store,
         modelo,
         config.COLUMNA_TARGET,
@@ -106,25 +108,21 @@ with st.spinner('Datos cargados y transformados...'):
 # PASO 4: Realizar predicción y preparar DataFrame para guardar
 # -------------------------
 with st.spinner('Realizando predicción...'):
-    # Seleccionamos las features que requiere el modelo
-    features_modelo = features[modelo.feature_names_in_]
-    # Realizamos la predicción para la próxima semana
-    resultado = predecir(modelo, features_modelo, solo_ultima=True)
-    st.sidebar.write("Paso 4. Predicción realizada.")
-    progress_bar.progress(4 / N_STEPS)
-
-    # Calculamos la fecha de la próxima semana y mostramos resultados
-    ultimo_lunes = df.iloc[-1]['week_start']
-    fecha_siguiente = ultimo_lunes + timedelta(days=7)
-    st.subheader('Predicción próxima semana:')
-    st.write(f"Fecha de la última semana con datos: {ultimo_lunes}")
-    st.write(f"Fecha de la predicción: {fecha_siguiente}")
-    st.write(f"Valor predicho: {resultado[0]:.2f}")
-
-    # Creamos un DataFrame con la fecha y el valor predicho para guardar en Hopsworks
+    # Obtener la predicción más reciente desde el Feature View de predicción
+    df_predicciones = obtener_predicciones_feature_view(
+        feature_store,
+        metadata=config.PRED_FEATURE_VIEW_METADATA
+    )
+    pred_ultima = df_predicciones.sort_values('week_start').tail(1)
+    fecha_pred = pred_ultima['week_start'].values[0]
+    valor_pred = pred_ultima['predicted_base_imponible'].values[0]
+    st.subheader('Predicción más reciente en Feature Store:')
+    st.write(f"Fecha de la predicción: {fecha_pred}")
+    st.write(f"Valor predicho: {valor_pred:.2f}")
+    # Creamos un DataFrame con la fecha y el valor predicho para guardar en Hopsworks (opcional)
     df_pred = pd.DataFrame({
-        'week_start': [fecha_siguiente],
-        'predicted_base_imponible': [resultado[0]]
+        'week_start': [fecha_pred],
+        'predicted_base_imponible': [valor_pred]
     })
 
 
