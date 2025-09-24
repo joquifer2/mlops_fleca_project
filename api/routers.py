@@ -42,30 +42,41 @@ async def predecir_ventas(request: PredictionRequest):
         )
 
         # 3. Cargar y transformar los datos de la feature view
-        # Usamos los metadatos centralizados en config
-        df, features = cargar_y_transformar_feature_view(
+        historico_df, _, _ = cargar_y_transformar_feature_view(
             feature_store=feature_store,
-            modelo=modelo,
+            modelo=None,
             columna_target=config.COLUMNA_TARGET,
             cols_exogenas=config.COLS_EXOGENAS,
             periodos_adelante=config.PERIODOS_ADELANTE,
             eliminar_nulos=config.ELIMINAR_NULOS,
             metadata=config.HISTORICAL_FEATURE_VIEW_METADATA
         )
-
-        # 4. Filtrar las columnas de features para que coincidan con las del modelo
-        features = features[modelo.feature_names_in_]
-
+        # 4. Generar los features para la próxima semana con logs detallados
+        ultima_semana_real = historico_df['week_start'].max()
+        next_week = ultima_semana_real + timedelta(days=7)
+        nueva_fila = {}
+        lags = [int(col.split('lag')[-1]) for col in modelo.feature_names_in_ if 'lag' in col]
+        print(f"Intentando generar features para la semana: {next_week} con lags: {lags}")
+        for lag in lags:
+            semana_lag = next_week - timedelta(days=7*lag)
+            valor_lag = historico_df.loc[historico_df['week_start'] == semana_lag, config.COLUMNA_TARGET].values
+            print(f"Lag {lag}: semana {semana_lag}, valor encontrado: {valor_lag}")
+            if len(valor_lag) == 0:
+                raise HTTPException(status_code=422, detail=f"No hay valor para el lag {lag} (semana {semana_lag}) en el histórico. No se puede predecir la semana {next_week}.")
+            nueva_fila[f'{config.COLUMNA_TARGET}_lag{lag}'] = valor_lag[0]
+        for col in config.COLS_EXOGENAS:
+            nueva_fila[col] = historico_df[col].iloc[-1] if col in historico_df.columns else None
+        nueva_fila['week_start'] = next_week
+        df_features_futuro = pd.DataFrame([nueva_fila])[list(modelo.feature_names_in_) + ['week_start']]
+        print("Features generados para la semana futura:")
+        print(df_features_futuro)
         # 5. Realizar la predicción para la próxima semana
-        prediction = predecir(modelo, features, solo_ultima=True)
+        prediction = predecir(modelo, df_features_futuro[modelo.feature_names_in_], solo_ultima=False)
         prediction_value = float(prediction[0])
-
-        # Calcular la fecha de la próxima semana
-        last_week = df.iloc[-1]['week_start']
-        next_week = last_week + timedelta(days=7)
         # 6. Devolver la predicción como diccionario compatible con Pydantic
         response = PredictionResponse(week_start=next_week, prediction=prediction_value)
         return response.dict()
+        
 
     except Exception as e:
         # Manejar errores y devolver una excepción HTTP 500
