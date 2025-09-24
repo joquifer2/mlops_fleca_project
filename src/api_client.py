@@ -1,24 +1,30 @@
+# src/api_client.py
+import os
+from urllib.parse import urljoin
 import requests
 import pandas as pd
-import os
 
-API_URL = "http://127.0.0.1:8080/predict"  # Puedes parametrizar esto si lo necesitas
-DEFAULT_API_URL = "http://fastapi:8000/predict"  # Usar el nombre del servicio Docker
-#API_URL = os.getenv("API_URL", DEFAULT_API_URL)
+DEFAULT_API_BASE = "http://fastapi:8000"  # útil en local con docker-compose
+API_URL_ENV = os.getenv("API_URL", DEFAULT_API_BASE).strip()
 
-def llamar_api_prediccion(timestamp, api_url=API_URL):
-    """
-    Llama al endpoint de predicción de la API FastAPI y devuelve la predicción como DataFrame.
-    Args:
-        timestamp (datetime): Fecha/hora en formato datetime o date
-        api_url (str): URL del endpoint de la API
-    Returns:
-        pd.DataFrame: DataFrame con la predicción recibida
-    """
+def _normalize_predict_url(api_url_env: str) -> str:
+    base = api_url_env.rstrip("/")
+    if base.endswith("/predict"):
+        return base
+    return urljoin(base + "/", "predict")
+
+def llamar_api_prediccion(timestamp, api_url: str | None = None) -> pd.DataFrame:
+    url = _normalize_predict_url(api_url or API_URL_ENV)
     payload = {"timestamp": timestamp.isoformat()}
-    response = requests.post(api_url, json=payload)
-    if response.status_code == 200:
-        # Ajusta según la estructura real de la respuesta
-        return pd.DataFrame([response.json()])
-    else:
-        raise RuntimeError(f"Error al llamar a la API: {response.status_code} - {response.text}")
+
+    # 🔒 Desactivar proxies sí o sí (mayúsculas/minúsculas)
+    session = requests.Session()
+    session.trust_env = False                 # ignora HTTP_PROXY/HTTPS_PROXY/ALL_PROXY
+    session.proxies = {"http": None, "https": None}  # cinturón y tirantes
+
+    r = session.post(url, json=payload, timeout=30)
+    r.raise_for_status()
+
+    data = r.json()
+    return pd.DataFrame([data]) if isinstance(data, dict) else pd.DataFrame(data)
+
