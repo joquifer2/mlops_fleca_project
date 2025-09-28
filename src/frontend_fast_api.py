@@ -7,7 +7,7 @@ import os
 import streamlit as st
 from datetime import datetime
 import pandas as pd
-from src.api_client import llamar_api_prediccion
+from api_client import llamar_api_prediccion
 
 
 # -------------------------
