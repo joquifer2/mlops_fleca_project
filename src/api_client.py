@@ -52,16 +52,12 @@ def obtener_datos_grafico(api_url: str | None = None) -> dict:
     - Devuelve un diccionario con 'historical' y 'predictions'
     """
     base_url = (api_url or API_URL_ENV).rstrip("/")
-    print(f"DEBUG: API_URL_ENV original = {API_URL_ENV}")
-    print(f"DEBUG: base_url after strip = {base_url}")
     
     # Asegurarse de que la URL base no termine en /predict
     if base_url.endswith("/predict"):
         base_url = base_url[:-8]  # Remover "/predict"
-        print(f"DEBUG: base_url after removing /predict = {base_url}")
     
     url = urljoin(base_url + "/", "chart-data")
-    print(f"DEBUG: final URL = {url}")
 
     # 🔒 Desactivar proxies sí o sí
     session = requests.Session()
