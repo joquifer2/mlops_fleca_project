@@ -15,11 +15,11 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path().resolve().parent / 'src'))
 
-import src.config as config 
+import config 
 from pathlib import Path
-from src.model import transformar_features_target
-from src.config import COLUMNA_TARGET, COLS_EXOGENAS, PERIODOS_ADELANTE, ELIMINAR_NULOS
-from src.config import PRED_FEATURE_GROUP_METADATA, PRED_FEATURE_VIEW_METADATA
+from model import transformar_features_target
+from config import COLUMNA_TARGET, COLS_EXOGENAS, PERIODOS_ADELANTE, ELIMINAR_NULOS
+from config import PRED_FEATURE_GROUP_METADATA, PRED_FEATURE_VIEW_METADATA
 
 # Configuración básica de logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
