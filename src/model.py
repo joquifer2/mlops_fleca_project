@@ -5,9 +5,9 @@
 
 import pandas as pd
 from datetime import datetime
-from data_utils import cargar_datos_raw, transformar_a_series_temporales, generar_lags, generar_target, transformar_features_target, guardar_datos_procesados
-from paths import PROCESSED_DIR
-from data_split import train_test_split
+from src.data_utils import cargar_datos_raw, transformar_a_series_temporales, generar_lags, generar_target, transformar_features_target, guardar_datos_procesados
+from src.paths import PROCESSED_DIR
+from src.data_split import train_test_split
 
 def preparar_datos_pipeline(
     parquet_file: str = None,
