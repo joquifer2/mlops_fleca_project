@@ -135,3 +135,9 @@ async def obtener_datos_grafico():
     except Exception as e:
         # Manejar errores y devolver una excepción HTTP 500
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/test")
+async def test_endpoint():
+    """Endpoint de prueba para verificar que Render se actualiza"""
+    return {"status": "ok", "message": "API updated successfully", "timestamp": "2025-09-28"}
