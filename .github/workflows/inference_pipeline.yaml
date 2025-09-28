@@ -17,7 +17,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install Poetry manually
         run: |
@@ -41,13 +41,14 @@ jobs:
       - name: Set GOOGLE_APPLICATION_CREDENTIALS env
         run: echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/credentials.json" >> $GITHUB_ENV
 
-      # 6. Ejecutar el pipeline de inferencia (notebook)
+     
       # 5.1. Crear config.py dinámico con las credenciales de Hopsworks
       - name: Crear config.py dinámico
         run: |
           echo "HOPSWORKS_PROJECT_NAME='${{ secrets.HOPSWORKS_PROJECT_NAME }}'" > config.py
           echo "HOPSWORKS_API_KEY='${{ secrets.HOPSWORKS_API_KEY }}'" >> config.py
 
+      # 6. Ejecutar el pipeline de inferencia (notebook)
       - name: Run inference pipeline notebook
         env:
           HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}

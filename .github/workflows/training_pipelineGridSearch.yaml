@@ -1,7 +1,8 @@
-
+# Workflow de entrenamiento con GridSearch para Fleca MLOps
 name: Fleca MLOps Training Pipeline GridSearch
 
 
+# Se ejecuta automáticamente cada martes a las 18:10 UTC y también manualmente
 on:
   schedule:
     - cron: '10 18 * * 2'  # Cada martes a las 18:10 (UTC)
@@ -11,33 +12,40 @@ jobs:
   training_pipeline_gridsearch:
     runs-on: ubuntu-latest
     steps:
+      # 1. Descargar el código del repositorio
       - name: Checkout repository
         uses: actions/checkout@v2
 
+      # 2. Instalar Python 3.11
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
+      # 3. Instalar Poetry manualmente
       - name: Install Poetry manually
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           export PATH="$HOME/.local/bin:$PATH"
 
+      # 4. Instalar las dependencias del proyecto
       - name: Install project dependencies
         run: |
           poetry config virtualenvs.in-project true
           poetry install --no-interaction --no-ansi
 
+      # 5. Guardar el archivo de credenciales de Google Cloud en el runner
       - name: Write Google credentials to file
         run: |
           cat <<EOF > /tmp/credentials.json
           ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           EOF
 
+      # 6. Configurar la variable de entorno para Google Cloud
       - name: Set GOOGLE_APPLICATION_CREDENTIALS env
         run: echo "GOOGLE_APPLICATION_CREDENTIALS=/tmp/credentials.json" >> $GITHUB_ENV
 
+      # 7. Ejecutar el notebook de entrenamiento con GridSearch
       - name: Run training pipeline GridSearch notebook
         env:
           HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
@@ -45,6 +53,7 @@ jobs:
         run: |
           poetry run jupyter nbconvert --to notebook --execute notebooks/14_training_pipeline_GridSearch.ipynb --inplace
 
+      # 8. Subir el notebook ejecutado como artefacto
       - name: Upload executed notebook
         uses: actions/upload-artifact@v4
         with:
