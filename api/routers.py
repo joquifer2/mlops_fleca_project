@@ -70,9 +70,11 @@ async def predecir_ventas(request: PredictionRequest):
         df_features_futuro = pd.DataFrame([nueva_fila])[list(modelo.feature_names_in_) + ['week_start']]
         print("Features generados para la semana futura:")
         print(df_features_futuro)
+
         # 5. Realizar la predicción para la próxima semana
         prediction = predecir(modelo, df_features_futuro[modelo.feature_names_in_], solo_ultima=False)
         prediction_value = float(prediction[0])
+        
         # 6. Devolver la predicción como diccionario compatible con Pydantic
         response = PredictionResponse(week_start=next_week, prediction=prediction_value)
         return response.dict()
