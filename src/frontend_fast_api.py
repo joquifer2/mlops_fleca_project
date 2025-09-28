@@ -22,6 +22,9 @@ st.header('by Jordi Quiroga')
 
 # Debug opcional: ver qué API_URL está leyendo la UI
 st.caption(f"API_URL = {os.getenv('API_URL', '(sin definir; usando fallback)')}")
+st.caption(f"HTTP_PROXY={os.getenv('HTTP_PROXY')}  HTTPS_PROXY={os.getenv('HTTPS_PROXY')}  ALL_PROXY={os.getenv('ALL_PROXY')}")
+st.caption(f"http_proxy={os.getenv('http_proxy')}  https_proxy={os.getenv('https_proxy')}  all_proxy={os.getenv('all_proxy')}")
+
 
 progress_bar = st.sidebar.header('Progreso')
 progress_bar = st.sidebar.progress(0)
