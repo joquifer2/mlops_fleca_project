@@ -9,7 +9,7 @@ import pyarrow.parquet as pq
 from google.cloud import bigquery
 from datetime import datetime, timedelta
 
-from src.paths import RAW_DIR, INTERIM_DIR
+from paths import RAW_DIR, INTERIM_DIR
 
 # --- Utilidad para obtener el último domingo ---
 def get_last_sunday():
@@ -42,7 +42,7 @@ def get_bigquery_client(cred_path=None, project="fleca-del-port"):
 
 # --- Función para importación robusta de paths centralizados ---
 
-from src.paths import RAW_DIR, INTERIM_DIR
+from paths import RAW_DIR, INTERIM_DIR
 
 
 def get_paths():
@@ -441,7 +441,7 @@ def load_raw_data_historico(
         DataFrame con los datos raw filtrados por fecha
     """
     # Obtener los paths centralizados
-    from src.paths import RAW_DIR
+    from paths import RAW_DIR
     from pathlib import Path
     from datetime import datetime, timedelta
     
@@ -449,12 +449,12 @@ def load_raw_data_historico(
     if descargar_bq or parquet_path is None:
         print(f"Descargando datos históricos completos desde BigQuery")
         # Usar la función de descarga histórica que combina ambas tablas
-        from src.data_utils import descargar_datos_bigquery_histórico
+        from data_utils import descargar_datos_bigquery_histórico
         df_raw = descargar_datos_bigquery_histórico()
         # La función ya guarda el archivo, así que no necesitamos hacer nada más aquí
     elif parquet_path is not None:
         # 2. Cargar datos raw desde parquet si no se descarga
-        from src.data_utils import cargar_datos_raw
+        from data_utils import cargar_datos_raw
         print(f"Cargando datos desde archivo: {parquet_path}")
         df_raw = cargar_datos_raw(parquet_path)
     
@@ -498,7 +498,7 @@ def load_raw_data_historico(
 
     # Validar continuidad solo si ambos están definidos
     if fecha_inicio is not None and fecha_fin is not None:
-        from src.data_utils import validar_fechas_completas
+        from data_utils import validar_fechas_completas
         validar_fechas_completas(df_raw, fecha_col='fecha', fecha_inicio=fecha_inicio, fecha_fin=fecha_fin)
     
     # 4. Homogeneizar familia
