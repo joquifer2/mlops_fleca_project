@@ -4,16 +4,31 @@ from urllib.parse import urljoin
 import requests
 import pandas as pd
 
-DEFAULT_API_BASE = "http://fastapi:8000"  # útil en local con docker-compose
-API_URL_ENV = os.getenv("API_URL", DEFAULT_API_BASE).strip()
+# URL base por defecto para la API 
+# En Docker Compose usa el nombre del servicio, fuera de Docker usa localhost
+DEFAULT_API_BASE = os.getenv("API_URL", "http://localhost:8000")
+
+# Lee la URL de la API de la variable de entorno API_URL, si existe, o usa la base por defecto
+API_URL_ENV = DEFAULT_API_BASE.strip()
 
 def _normalize_predict_url(api_url_env: str) -> str:
+    """
+    Normaliza la URL para el endpoint /predict.
+    Si la URL ya termina en /predict, la devuelve tal cual.
+    Si no, la concatena correctamente.
+    """
     base = api_url_env.rstrip("/")
     if base.endswith("/predict"):
         return base
     return urljoin(base + "/", "predict")
 
 def llamar_api_prediccion(timestamp, api_url: str | None = None) -> pd.DataFrame:
+    """
+    Llama al endpoint de predicción de la API FastAPI y devuelve la predicción como DataFrame.
+    - timestamp: datetime a enviar en la petición (en formato ISO)
+    - api_url: URL del endpoint de la API (opcional, por defecto usa API_URL_ENV)
+    - Desactiva el uso de proxies del sistema para evitar problemas en entornos corporativos.
+    """
     url = _normalize_predict_url(api_url or API_URL_ENV)
     payload = {"timestamp": timestamp.isoformat()}
 
@@ -26,5 +41,6 @@ def llamar_api_prediccion(timestamp, api_url: str | None = None) -> pd.DataFrame
     r.raise_for_status()
 
     data = r.json()
+    # Devuelve un DataFrame con la predicción (soporta respuesta dict o lista de dicts)
     return pd.DataFrame([data]) if isinstance(data, dict) else pd.DataFrame(data)
 
