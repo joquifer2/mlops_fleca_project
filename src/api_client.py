@@ -52,6 +52,10 @@ def obtener_datos_grafico(api_url: str | None = None) -> dict:
     - Devuelve un diccionario con 'historical' y 'predictions'
     """
     base_url = (api_url or API_URL_ENV).rstrip("/")
+    # Asegurarse de que la URL base no termine en /predict
+    if base_url.endswith("/predict"):
+        base_url = base_url[:-8]  # Remover "/predict"
+    
     url = urljoin(base_url + "/", "chart-data")
 
     # 🔒 Desactivar proxies sí o sí
