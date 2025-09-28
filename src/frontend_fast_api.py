@@ -65,8 +65,8 @@ if accion is None:
 else:
     # 👉 Importar Hopsworks SOLO si se va a usar
     try:
-        import src.config as config
-        from src.inference import (
+        import config
+        from inference import (
             conectar_hopsworks_feature_store,
             guardar_predicciones_en_hopsworks,
             visualizar_historico_predicciones,
