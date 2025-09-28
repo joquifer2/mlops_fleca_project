@@ -1,92 +1,80 @@
-mlops_project
-==============================
+# Fleca MLOps Forecasting Project
+**Trabajo final del Máster ML Engineer - Nodd3r**
 
-Proyecto de ML Ops de Nodd3r
+## Objetivo académico
+Este proyecto ha sido desarrollado como trabajo final del Máster ML Engineer en Nodd3r, con el objetivo de demostrar competencias en:
 
-Project Organization
-------------
-
-    ├── LICENSE
-    ├── Makefile           <- Makefile with commands like `make data` or `make train`
-    ├── README.md          <- The top-level README for developers using this project.
-    ├── data
-    │   ├── external       <- Data from third party sources.
-    │   ├── interim        <- Intermediate data that has been transformed.
-    │   ├── processed      <- The final, canonical data sets for modeling.
-    │   └── raw            <- The original, immutable data dump.
-    │
-    ├── docs               <- A default Sphinx project; see sphinx-doc.org for details
-    │
-    ├── models             <- Trained and serialized models, model predictions, or model summaries
-    │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-    │                         the creator's initials, and a short `-` delimited description, e.g.
-    │                         `1.0-jqp-initial-data-exploration`.
-    │
-    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
-    │
-    ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   └── figures        <- Generated graphics and figures to be used in reporting
-    │
-    ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-    │                         generated with `pip freeze > requirements.txt`
-    │
-    ├── setup.py           <- makes project pip installable (pip install -e .) so src can be imported
-    ├── src                <- Source code for use in this project.
-    │   ├── __init__.py    <- Makes src a Python module
-    │   │
-    │   ├── data           <- Scripts to download or generate data
-    │   │   └── make_dataset.py
-    │   │
-    │   ├── features       <- Scripts to turn raw data into features for modeling
-    │   │   └── build_features.py
-    │   │
-    │   ├── models         <- Scripts to train models and then use trained models to make
-    │   │   │                 predictions
-    │   │   ├── predict_model.py
-    │   │   └── train_model.py
-    │   │
-    │   └── visualization  <- Scripts to create exploratory and results oriented visualizations
-    │       └── visualize.py
-    │
-    └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
+1. Diseño y despliegue de sistemas MLOps
+2. Automatización de pipelines de Machine Learning
+3. Integración de modelos en producción
+4. Buenas prácticas de ingeniería de datos y software
 
 
---------
+## Descripción
+Este proyecto consiste en el desarrollo y despliegue de una API de predicción de ventas semanales de productos bollería de un negocio de hostelería, utilizando técnicas avanzadas de Machine Learning y MLOps. El objetivo principal es demostrar la capacidad de construir, versionar y poner en producción un modelo de forecasting real, integrando buenas prácticas de ingeniería de datos y automatización.
 
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
+## Características principales
+- API RESTful desarrollada con FastAPI y Docker.
+- Frontend interactivo con Streamlit para visualización y consumo de la API.
+- Pipeline MLOps completo: entrenamiento, registro y despliegue de modelos.
+- Integración con Hopsworks para gestión de feature store y model registry.
+- Automatización con GitHub Actions para CI/CD y ejecución de pipelines.
+- Configuración reproducible con Poetry y Docker Compose.
 
-## Arranque del servidor MLflow local
+## Estructura del proyecto
 
-Para iniciar el servidor MLflow en tu entorno local, ejecuta el siguiente comando en una terminal desde la raíz del proyecto:
-
-```bat
-mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns --host 0.0.0.0 --port 5000
-```
-
-O simplemente ejecuta el script incluido:
-
-```bat
-start_mlflow_server.bat
-```
-
-Esto iniciará MLflow en [http://localhost:5000](http://localhost:5000) y podrás registrar y visualizar tus experimentos.
-
-## Inicializar el servidor de ML Flow en local
-
-.\.venv\Scripts\Activate.ps1
-.\start_mlflow_server.bat
-http://127.0.0.1:5000/#/models
-
-url docs: https://mlflow.org/docs/latest/
-
-
-# Comando para crear el requirements.txt con poetry, necesario para streamlit
-poetry export --without-hashes -f requirements.txt -o requirements.txt
+mlops_fleca_project/
+│
+├── api/                # Código de la API FastAPI
+├── src/                # Código fuente y utilidades
+├── notebooks/          # Jupyter Notebooks de experimentación y análisis
+├── models/             # Modelos entrenados y serializados
+├── data/               # Datos en diferentes estados (raw, processed, etc.)
+├── .github/workflows/  # Workflows de CI/CD (GitHub Actions)
+├── Dockerfile          # Imagen Docker para despliegue
+├── docker-compose.yml  # Orquestación de servicios (API + Streamlit)
+├── pyproject.toml      # Configuración de dependencias (Poetry)
+├── README.md           # Este archivo
+└── ...                 # Otros archivos y utilidades
 
 
-# Para ejecutar la api
-uvicorn api.main:app --reload
+## Despliegue en Render
+El modelo y la API han sido desplegados en Render y están disponibles públicamente:
 
-# Para verlo
-http://127.0.0.1:8000/docs
+API FastAPI: https://mlops-fleca-project-api.onrender.com
+Frontend Streamlit: https://mlops-fleca-project.onrender.com
+Puedes acceder a la documentación interactiva de la API en:
+
+https://mlops-fleca-project-api.onrender.com/docs
+
+### Resumen operativo
+Este repositorio incluye una solución completa lista para demostración y despliegue. A modo de resumen operativo:
+
+- API de predicción: genera predicciones semanales utilizando el modelo XGBoost entrenado y versionado en el proyecto.
+- Gráfico comparativo: el frontend muestra datos históricos reales frente a las predicciones para facilitar la interpretación.
+- Frontend claro y ligero: interfaz construida con Streamlit que actúa únicamente como consumidor de la API.
+- Arquitectura separada: el frontend no accede directamente a Hopsworks; toda la lógica de features/modelos está en la API.
+- Despliegue en la nube: API y frontend están desplegados en Render y accesibles públicamente (URLs arriba).
+
+Consideraciones finales (opcional):
+
+- Las credenciales y secretos no están incluidos en el repositorio; se han configurado como variables secretas en la plataforma de Render.
+
+- Para reproducibilidad en despliegues de producción se recomienda usar la imagen Docker incluida y variables de entorno controladas.
+
+
+## Despliegue en Cloud Run de Google Cloud
+
+
+## Despliegue básico en Streamlit Cloud
+
+Además del despliegue en Render y en google cloud, el frontend interactivo ha sido publicado en Streamlit Cloud. Esta plataforma permite visualizar y consumir el modelo de predicción directamente desde el navegador, sin necesidad de instalar dependencias ni ejecutar código localmente.
+
+- **Streamlit Cloud:** [https://mlopsflecaprojectv0.streamlit.app/](https://mlopsflecaprojectv0.streamlit.app/)
+
+En esta interfaz puedes:
+- Realizar predicciones de ventas semanales de bollería usando el modelo desplegado.
+- Visualizar los resultados y gráficos generados por el modelo.
+- Probar la API de forma sencilla y rápida, ideal para demostraciones y validación del funcionamiento en producción.
+
+> El frontend de Streamlit Cloud ejecuta el modelo directamente con el código disponible en este repositorio de GitHub, por lo que las predicciones se realizan en tiempo real sobre la versión publicada en Streamlit Cloud, de forma independiente a la API pública de Render.
