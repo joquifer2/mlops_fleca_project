@@ -83,3 +83,55 @@ async def predecir_ventas(request: PredictionRequest):
     except Exception as e:
         # Manejar errores y devolver una excepción HTTP 500
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/chart-data")
+async def obtener_datos_grafico():
+    """
+    Endpoint para obtener datos históricos y predicciones para visualización en gráfico.
+    """
+    try:
+        # 1. Conectar a Hopsworks y obtener feature_store y project
+        project, feature_store = conectar_hopsworks_feature_store()
+
+        # 2. Obtener datos históricos
+        from src.inference import cargar_y_transformar_feature_view, obtener_predicciones_feature_view
+        
+        historico_df, _, _ = cargar_y_transformar_feature_view(
+            feature_store=feature_store,
+            modelo=None,
+            columna_target=config.COLUMNA_TARGET,
+            cols_exogenas=config.COLS_EXOGENAS,
+            periodos_adelante=config.PERIODOS_ADELANTE,
+            eliminar_nulos=config.ELIMINAR_NULOS,
+            metadata=config.HISTORICAL_FEATURE_VIEW_METADATA
+        )
+        
+        # 3. Obtener predicciones históricas
+        try:
+            predicciones_df = obtener_predicciones_feature_view(
+                feature_store,
+                metadata=config.PRED_FEATURE_VIEW_METADATA
+            )
+        except Exception:
+            # Si no hay predicciones históricas, crear DataFrame vacío
+            predicciones_df = pd.DataFrame(columns=['week_start', 'predicted_base_imponible'])
+
+        # 4. Preparar datos para el gráfico
+        # Convertir fechas a strings para JSON serialization
+        historico_data = historico_df.copy()
+        historico_data['week_start'] = historico_data['week_start'].dt.strftime('%Y-%m-%d')
+        
+        predicciones_data = predicciones_df.copy()
+        if not predicciones_data.empty:
+            predicciones_data['week_start'] = predicciones_data['week_start'].dt.strftime('%Y-%m-%d')
+        
+        # 5. Devolver datos en formato JSON
+        return {
+            "historical": historico_data[['week_start', config.COLUMNA_TARGET]].to_dict('records'),
+            "predictions": predicciones_data[['week_start', 'predicted_base_imponible']].to_dict('records') if not predicciones_data.empty else []
+        }
+
+    except Exception as e:
+        # Manejar errores y devolver una excepción HTTP 500
+        raise HTTPException(status_code=500, detail=str(e))

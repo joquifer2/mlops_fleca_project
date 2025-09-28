@@ -44,3 +44,23 @@ def llamar_api_prediccion(timestamp, api_url: str | None = None) -> pd.DataFrame
     # Devuelve un DataFrame con la predicción (soporta respuesta dict o lista de dicts)
     return pd.DataFrame([data]) if isinstance(data, dict) else pd.DataFrame(data)
 
+
+def obtener_datos_grafico(api_url: str | None = None) -> dict:
+    """
+    Llama al endpoint /chart-data de la API para obtener datos históricos y predicciones.
+    - api_url: URL base de la API (opcional, por defecto usa API_URL_ENV)
+    - Devuelve un diccionario con 'historical' y 'predictions'
+    """
+    base_url = (api_url or API_URL_ENV).rstrip("/")
+    url = urljoin(base_url + "/", "chart-data")
+
+    # 🔒 Desactivar proxies sí o sí
+    session = requests.Session()
+    session.trust_env = False
+    session.proxies = {"http": None, "https": None}
+
+    r = session.get(url, timeout=30)
+    r.raise_for_status()
+
+    return r.json()
+
