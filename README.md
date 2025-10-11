@@ -64,6 +64,26 @@ Consideraciones finales (opcional):
 
 
 ## Despliegue en Cloud Run de Google Cloud
+El proyecto está preparado para despliegue automático en Google Cloud Run, aprovechando la integración nativa con GitHub y los flujos CI/CD modernos. El objetivo es garantizar una arquitectura robusta, escalable y reproducible, alineada con los estándares de MLOps en producción.
+
+**Arquitectura y componentes**
+* API FastAPI: Servicio backend que expone los endpoints de predicción y gestión de modelos. Desplegado como contenedor en Cloud Run, accesible vía HTTPS y escalable bajo demanda.
+* Frontend Streamlit: Interfaz ligera para visualización y consumo de la API, también desplegada como servicio independiente en Cloud Run.
+* GitHub Actions: Automatiza el ciclo de build, test y despliegue. Cada push a main dispara la construcción de la imagen Docker y su despliegue en Cloud Run.
+* Docker: Ambos servicios (API y frontend) cuentan con Dockerfiles optimizados para Cloud Run, asegurando portabilidad y tiempos de build mínimos.
+
+**Descripción del despliegue**
+1. Preparación del código: El repositorio incluye los Dockerfiles y .dockerignore necesarios para construir imágenes ligeras y reproducibles. 2. Los directorios opcionales (como models) se gestionan automáticamente en el build para evitar errores.
+3. Integración con GitHub: Al hacer push a la rama principal, GitHub Actions ejecuta los workflows definidos, construyendo y testeando los contenedores.
+4. Despliegue automático: Cloud Build recibe las imágenes y las publica en Cloud Run, exponiendo los servicios en URLs públicas y seguras.
+Variables de entorno: Las credenciales sensibles (API keys, nombres de proyecto, etc.) se configuran como variables secretas en Cloud Run, nunca en el código fuente.
+
+**URLs**
+API FastAPI: https://mlops-fleca-project-api-142425263805.europe-west1.run.app
+Frontend Streamlit: https://mlops-fleca-project-streamlit-142425263805.europe-west1.run.app/predict
+
+Puedes acceder a la documentación interactiva de la API en: https://mlops-fleca-project-api-142425263805.europe-west1.run.app/docs
+
 
 
 ## Despliegue básico en Streamlit Cloud
