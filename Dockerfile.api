@@ -29,7 +29,9 @@ RUN poetry install --only=main --no-root
 # Copiar el código fuente
 COPY src/ ./src/
 COPY api/ ./api/
-COPY models/ ./models/
+
+# Crear directorio models (crear vacío si no existe)
+RUN mkdir -p ./models/
 
 # Crear usuario no-root para seguridad
 RUN useradd --create-home --shell /bin/bash app
