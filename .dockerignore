@@ -1,19 +1,66 @@
-# Archivos y carpetas a ignorar en el contexto de Docker
-.dockerignore
-.dvc/
-.env
-.git/
-.github/
+# -------------------------
+# .dockerignore para Google Cloud Run
+# -------------------------
+
+# Archivos de Git
+.git
+.gitignore
+
+# Entornos virtuales
 .venv/
-.vscode/
+venv/
+env/
+.env
+
+# Archivos de Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.db
-*.sqlite3
-*.log
-*.mlruns
-mlartifacts/
+.Python
+*.so
+.coverage
+.pytest_cache/
+
+# Jupyter Notebooks
+notebooks/
+*.ipynb
+
+# Documentación
+docs/
+README.md
+*.md
+
+# MLflow artifacts locales
 mlruns/
-# ¡NO ignores .gitignore ni README.md!
+mlartifacts/
+
+# Archivos de desarrollo
+.vscode/
+.idea/
+*.log
+
+# Archivos de datos grandes
+data/
+*.csv
+*.parquet
+*.pkl
+
+# Archivos de configuración local
+.env.local
+docker-compose.yml
+Makefile
+tox.ini
+
+# Archivos de prueba
+tests/
+*_test.py
+test_*.py
+
+# Scripts de desarrollo
+scripts/
+start_mlflow_server.bat
+
+# DVC
+*.dvc
+.dvc/
