@@ -28,7 +28,9 @@ RUN poetry install --only=main --no-root
 
 # Copiar el código fuente necesario para Streamlit
 COPY src/ ./src/
-COPY models/ ./models/
+
+# Crear directorio models (crear vacío si no existe)
+RUN mkdir -p ./models/
 
 # Crear directorio para la app de Streamlit si no existe
 RUN mkdir -p streamlit_app
