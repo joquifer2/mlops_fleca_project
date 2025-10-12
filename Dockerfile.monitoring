@@ -1,51 +1,56 @@
-# Dockerfile.monitoring
+# -------------------------
+# Dockerfile para Dashboard de Monitorización - Google Cloud Run
+# -------------------------
+
 FROM python:3.11-slim
 
-# Instalar dependencias del sistema
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Crear usuario no-root
-RUN groupadd -r app && useradd -r -g app app
-
-# Establecer directorio de trabajo
+# Establecer el directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos de dependencias
-COPY pyproject.toml poetry.lock ./
+# Instalar dependencias del sistema necesarias
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
 
 # Instalar Poetry
-RUN pip install poetry
+RUN pip install --upgrade pip && \
+    pip install poetry
 
-# Configurar Poetry para no crear entorno virtual
+# Configurar Poetry para no crear un entorno virtual (ya estamos en Docker)
 RUN poetry config virtualenvs.create false
 
-# Instalar dependencias
-RUN poetry install --only=main
+# Copiar archivos de configuración de Poetry
+COPY pyproject.toml poetry.lock ./
 
-# Copiar código fuente
+# Instalar solo las dependencias de producción
+RUN poetry install --only=main --no-root
+
+# Copiar el código fuente necesario
 COPY src/ ./src/
 COPY api/ ./api/
 
-# Crear directorio models vacío (evitar errores)
+# Crear directorio models (crear vacío si no existe)
 RUN mkdir -p ./models/
 
-# Cambiar ownership al usuario app
+# Crear usuario no-root para seguridad
+RUN useradd --create-home --shell /bin/bash app
 RUN chown -R app:app /app
-
-# Cambiar a usuario no-root
 USER app
 
-# Exponer puerto
+# Exponer el puerto que usará Cloud Run
 EXPOSE 8080
 
-# Variables de entorno
+# Variables de entorno para producción
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
 
+# Configuración específica de Streamlit para Cloud Run
+ENV STREAMLIT_SERVER_PORT=8080
+ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+ENV STREAMLIT_SERVER_HEADLESS=true
+ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+
 # Comando para ejecutar el dashboard
-CMD ["streamlit", "run", "src/monitoring_dashboard.py", "--server.port=8080", "--server.address=0.0.0.0", "--server.headless=true", "--server.enableCORS=false", "--server.enableXsrfProtection=false"]
+CMD ["streamlit", "run", "src/monitoring_dashboard.py", "--server.port=8080", "--server.address=0.0.0.0"]
