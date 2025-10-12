@@ -85,6 +85,36 @@ Frontend Streamlit: https://mlops-fleca-project-streamlit-142425263805.europe-we
 Puedes acceder a la documentación interactiva de la API en: https://mlops-fleca-project-api-142425263805.europe-west1.run.app/docs
 
 
+## Despliegue del Dashboard de Monitorización en Cloud Run
+
+El dashboard de monitorización (`src/monitoring_dashboard.py`) permite visualizar en tiempo real el estado del sistema MLOps, métricas del modelo, evolución de las predicciones y la detección de data drift, todo directamente conectado al Feature Store de Hopsworks.
+
+**Características principales:**
+- Visualización de métricas clave (RMSE, MAE, MAPE, R²) y su evolución semanal.
+- Gráfico comparativo entre datos reales y predicciones.
+- Detección automática de data drift usando datos reales.
+- Interfaz moderna y responsiva con Streamlit.
+
+**Despliegue en Cloud Run:**
+1. El dashboard se despliega como un servicio independiente en Cloud Run usando el `Dockerfile.monitoring`.
+2. No depende de la API FastAPI; accede directamente a Hopsworks mediante credenciales configuradas como variables de entorno.
+3. El contenedor se construye automáticamente desde GitHub y se publica en Cloud Run, quedando accesible desde una URL pública y segura.
+
+**Variables de entorno necesarias:**
+- `HOPSWORKS_PROJECT_NAME`
+- `HOPSWORKS_API_KEY`
+- `HOPSWORKS_HOST`
+
+Estas variables deben configurarse en Cloud Run (preferiblemente como secretos) para habilitar la conexión segura con Hopsworks.
+
+**URL:**
+El servicio está disponible en la siguiente URL:
+  ```
+  https://mlops-fleca-project-monitoring-142425263805.europe-west1.run.app/
+  ```
+
+El dashboard de monitorización complementa la API y el frontend, permitiendo a los equipos de datos y negocio supervisar el rendimiento del modelo, la calidad de los datos y la estabilidad del sistema MLOps en producción. Gracias al despliegue en Cloud Run, el dashboard es escalable, seguro y accesible desde cualquier lugar, facilitando la toma de decisiones basada en datos reales y actualizados.
+
 
 ## Despliegue básico en Streamlit Cloud
 
@@ -98,3 +128,5 @@ En esta interfaz puedes:
 - Probar la API de forma sencilla y rápida, ideal para demostraciones y validación del funcionamiento en producción.
 
 > El frontend de Streamlit Cloud ejecuta el modelo directamente con el código disponible en este repositorio de GitHub, por lo que las predicciones se realizan en tiempo real sobre la versión publicada en Streamlit Cloud, de forma independiente a la API pública de Render.
+
+
