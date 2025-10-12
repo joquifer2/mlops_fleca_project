@@ -1,0 +1,52 @@
+# Dockerfile.monitoring
+FROM python:3.11-slim
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    software-properties-common \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Crear usuario no-root
+RUN groupadd -r app && useradd -r -g app app
+
+# Establecer directorio de trabajo
+WORKDIR /app
+
+# Copiar archivos de dependencias
+COPY pyproject.toml poetry.lock ./
+
+# Instalar Poetry
+RUN pip install poetry
+
+# Configurar Poetry para no crear entorno virtual
+RUN poetry config virtualenvs.create false
+
+# Instalar dependencias
+RUN poetry install --only=main --no-dev
+
+# Copiar código fuente
+COPY src/ ./src/
+COPY api/ ./api/
+
+# Crear directorio models vacío (evitar errores)
+RUN mkdir -p ./models/
+
+# Cambiar ownership al usuario app
+RUN chown -R app:app /app
+
+# Cambiar a usuario no-root
+USER app
+
+# Exponer puerto
+EXPOSE 8080
+
+# Variables de entorno
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
+
+# Comando para ejecutar el dashboard
+CMD ["streamlit", "run", "src/monitoring_dashboard.py", "--server.port=8080", "--server.address=0.0.0.0", "--server.headless=true", "--server.enableCORS=false", "--server.enableXsrfProtection=false"]
