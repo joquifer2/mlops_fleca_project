@@ -1,5 +1,0 @@
-outs:
-- md5: 981d07b0650fcd9b60df2d9b07e99ab0
-  size: 31923
-  hash: md5
-  path: raw_data_bq_forecasting_20250813.parquet

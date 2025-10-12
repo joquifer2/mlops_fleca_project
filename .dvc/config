@@ -1,5 +1,0 @@
-[core]
-    remote = origin
-
-[remote "origin"]
-    url = https://dagshub.com/joquifer2/mlops_fleca_project.dvc
