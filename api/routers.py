@@ -2,6 +2,7 @@
 # Contiene toda la lógica de que hacer cuando un usuario llama a /predict
 # Importa APIRouter y HTTPException para manejar rutas y errores HTTP
 from fastapi import APIRouter, HTTPException 
+import logging
 
 # Importa los esquemas de solicitud y respuesta
 from api.schemas import PredictionRequest, PredictionResponse 
@@ -81,8 +82,7 @@ async def predecir_ventas(request: PredictionRequest):
         return response.dict()
 
     except Exception as e:
-        print("Traceback completo del error en /predict:")
-        traceback.print_exc()
+        logging.error("Traceback completo del error en /predict:\n%s", traceback.format_exc())
         # Manejar errores y devolver una excepción HTTP 500
         raise HTTPException(status_code=500, detail=str(e))
 
