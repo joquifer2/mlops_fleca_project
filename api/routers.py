@@ -29,6 +29,7 @@ async def predecir_ventas(request: PredictionRequest):
     """
     Endpoint para predecir las ventas de bollería usando la lógica y metadatos centralizados.
     """
+    import traceback
     try:
         # 1. Conectar a Hopsworks y obtener feature_store y project
         project, feature_store = conectar_hopsworks_feature_store()
@@ -78,9 +79,10 @@ async def predecir_ventas(request: PredictionRequest):
         # 6. Devolver la predicción como diccionario compatible con Pydantic
         response = PredictionResponse(week_start=next_week, prediction=prediction_value)
         return response.dict()
-        
 
     except Exception as e:
+        print("Traceback completo del error en /predict:")
+        traceback.print_exc()
         # Manejar errores y devolver una excepción HTTP 500
         raise HTTPException(status_code=500, detail=str(e))
 
